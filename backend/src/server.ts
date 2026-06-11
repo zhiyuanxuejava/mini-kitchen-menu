@@ -16,6 +16,7 @@ const app = express()
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(dirname, '..', '..')
 const uploadDir = path.resolve(dirname, '..', 'uploads')
+const staticDir = path.join(rootDir, 'frontend', 'src', 'static')
 const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.json')
 const port = Number(process.env.PORT || 3001)
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
@@ -33,6 +34,7 @@ const upload = multer({ dest: uploadDir })
 app.use(cors())
 app.use(express.json({ limit: '4mb' }))
 app.use('/uploads', express.static(uploadDir))
+app.use('/static', express.static(staticDir))
 
 interface AuthedRequest extends Request {
   user?: User

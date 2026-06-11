@@ -366,7 +366,7 @@ function formatDate(value: string) {
 function assetUrl(value: string) {
   if (!value) return ''
   if (/^https?:\/\//.test(value)) return value
-  if (value.startsWith('/uploads/')) return `${API_BASE}${value}`
+  if (value.startsWith('/uploads/') || value.startsWith('/static/')) return `${API_BASE}${value}`
   return ''
 }
 

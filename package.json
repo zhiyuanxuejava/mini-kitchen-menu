@@ -17,6 +17,7 @@
     "build:backend": "npm --workspace backend run build",
     "prisma:generate": "npm --workspace backend run prisma:generate",
     "prisma:migrate": "npm --workspace backend run prisma:migrate",
-    "sync:howtocook": "node scripts/sync-howtocook-recipes.mjs"
+    "sync:howtocook": "node scripts/sync-howtocook-recipes.mjs",
+    "sync:howtocook-images": "node scripts/sync-howtocook-images.mjs"
   }
 }
