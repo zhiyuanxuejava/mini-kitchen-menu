@@ -11,3 +11,5 @@ backend/.env
 .env.local
 
 *.log
+.logs/
+.playwright-cli/
