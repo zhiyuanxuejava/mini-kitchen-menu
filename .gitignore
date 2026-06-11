@@ -9,3 +9,5 @@ backend/*.log
 .env
 backend/.env
 .env.local
+
+*.log
