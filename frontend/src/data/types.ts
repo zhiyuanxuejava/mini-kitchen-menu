@@ -1,4 +1,5 @@
-export type DishCategory = 'meat' | 'vegetable' | 'soup' | 'staple'
+export type DishCategory = 'meat' | 'vegetable' | 'soup' | 'staple' | 'aquatic' | 'breakfast' | 'dessert' | 'drink' | 'condiment' | 'semi_finished' | 'other'
+export type DishSourceType = 'system_sync' | 'user_created'
 export type Difficulty = '简单' | '中等' | '较难'
 export type IngredientGroupType = 'main' | 'side' | 'seasoning'
 export type CookStatus = 'pending' | 'cooking' | 'done'
@@ -7,8 +8,9 @@ export type TasteFeedback = '刚好' | '偏淡' | '偏咸' | '偏甜'
 export interface UserProfile {
   id: string
   nickname: string
-  avatarUrl: string
+  avatarUrl?: string
   email?: string
+  role?: 'user' | 'admin'
 }
 
 export interface Ingredient {
@@ -47,6 +49,11 @@ export interface Dish {
   rating: number
   ratingCount: number
   isFavorite: boolean
+  sourceType?: DishSourceType
+  sourceName?: string
+  sourceUrl?: string
+  sourceLicense?: string
+  ownerUserId?: string
   ingredients: Ingredient[]
   steps: DishStep[]
   tips: string[]

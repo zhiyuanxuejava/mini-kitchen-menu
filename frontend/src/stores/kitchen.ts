@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { kitchenApi } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { seedDishes } from '@/data/seed'
 import type {
@@ -6,6 +7,7 @@ import type {
   CookStatus,
   Dish,
   DishCategory,
+  DishSourceType,
   MenuItem,
   Rating,
   TasteFeedback,
@@ -16,9 +18,13 @@ import type {
 const STORAGE_KEY = 'zhangshao-menu-state'
 const PROTOTYPE_MENU_DISH_IDS = ['hongshaorou', 'tomato-egg', 'seaweed-egg-soup', 'shredded-potato']
 const MIN_REAL_DISH_COUNT = 50
+type DishSourceFilter = DishSourceType | 'all'
 
 interface KitchenState {
   hydrated: boolean
+  loading: boolean
+  apiError: string
+  token: string
   user: UserProfile | null
   dishes: Dish[]
   menu: TodayMenu
@@ -27,6 +33,7 @@ interface KitchenState {
 }
 
 interface PersistedKitchenState {
+  token?: string
   user: UserProfile | null
   dishes: Dish[]
   menu: TodayMenu
@@ -54,6 +61,40 @@ function nowText() {
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+}
+
+function sourceTypeOf(dish: Dish): DishSourceType {
+  return dish.sourceType || 'system_sync'
+}
+
+function sourceLabelOf(dish: Dish) {
+  return sourceTypeOf(dish) === 'system_sync' ? '后台同步' : '用户录入'
+}
+
+function canUserEditDish(dish: Dish, user: UserProfile | null) {
+  return sourceTypeOf(dish) === 'user_created' && Boolean(user?.id) && dish.ownerUserId === user?.id
+}
+
+function menuNeedsRepair(menu: TodayMenu, dishes: Dish[]) {
+  if (!menu.items.length || !dishes.length) return false
+  const ids = new Set(dishes.map((dish) => dish.id))
+  return menu.items.some((item) => !ids.has(item.dishId))
+}
+
+function menuFromDishes(dishes: Dish[]) {
+  const selected = dishes.slice(0, 4)
+  return {
+    ...defaultMenu(),
+    items: selected.map((dish, index) => ({
+      id: makeId('item'),
+      dishId: dish.id,
+      quantity: 1,
+      note: '',
+      sortOrder: index + 1,
+      cookStatus: 'pending' as CookStatus,
+      currentStep: 1
+    }))
+  }
 }
 
 function defaultMenu(): TodayMenu {
@@ -119,6 +160,9 @@ function defaultRatings(): Rating[] {
 
 function initialState(): Omit<KitchenState, 'hydrated'> {
   return {
+    loading: false,
+    apiError: '',
+    token: '',
     user: null,
     dishes: seedDishes,
     menu: defaultMenu(),
@@ -129,9 +173,8 @@ function initialState(): Omit<KitchenState, 'hydrated'> {
 
 function isCurrentRealDishCache(cached: PersistedKitchenState) {
   const dishes = Array.isArray(cached.dishes) ? cached.dishes : []
-  const redPork = dishes.find((dish) => dish.id === 'hongshaorou')
 
-  return dishes.length >= MIN_REAL_DISH_COUNT && redPork?.name === '红烧肉' && redPork.coverImage.includes('/static/assets/dishes/real/')
+  return dishes.length >= MIN_REAL_DISH_COUNT
 }
 
 export const useKitchenStore = defineStore('kitchen', {
@@ -187,7 +230,8 @@ export const useKitchenStore = defineStore('kitchen', {
       const cached = uni.getStorageSync(STORAGE_KEY) as PersistedKitchenState | ''
       if (cached && typeof cached === 'object') {
         const useCache = isCurrentRealDishCache(cached)
-        this.user = cached.user
+        this.token = cached.token || ''
+        this.user = this.token ? cached.user : null
         this.dishes = useCache ? cached.dishes : seedDishes
         this.menu = useCache ? cached.menu || defaultMenu() : defaultMenu()
         this.records = useCache ? cached.records || [] : defaultRecords()
@@ -197,6 +241,7 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     persist() {
       const payload: PersistedKitchenState = {
+        token: this.token,
         user: this.user,
         dishes: this.dishes,
         menu: this.menu,
@@ -205,39 +250,93 @@ export const useKitchenStore = defineStore('kitchen', {
       }
       uni.setStorageSync(STORAGE_KEY, payload)
     },
-    loginWithEmail(email: string) {
-      this.user = {
-        id: `email:${email}`,
-        nickname: email.split('@')[0] || '小厨房',
-        avatarUrl: icons.avatar,
-        email
+    async runRemote<T>(task: () => Promise<T>) {
+      this.loading = true
+      this.apiError = ''
+      try {
+        return await task()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '网络请求失败'
+        this.apiError = message
+        throw error
+      } finally {
+        this.loading = false
       }
+    },
+    async loginWithEmail(email: string, password = '123456') {
+      const result = await this.runRemote(() => kitchenApi.loginWithEmail(email, password))
+      this.token = result.token
+      this.user = result.user
+      await this.refreshDishes()
       this.persist()
     },
-    registerWithEmail(email: string) {
-      this.loginWithEmail(email)
+    async registerWithEmail(email: string, password = '123456') {
+      const result = await this.runRemote(() => kitchenApi.registerWithEmail(email, password))
+      this.token = result.token
+      this.user = result.user
+      await this.refreshDishes()
+      this.persist()
     },
-    loginWithWechat() {
-      this.user = {
-        id: 'wechat-demo-user',
-        nickname: '小厨房',
-        avatarUrl: icons.avatar
-      }
+    async loginWithWechat() {
+      const result = await this.runRemote(() => kitchenApi.loginWithWechat('wechat-demo-openid'))
+      this.token = result.token
+      this.user = result.user
+      await this.refreshDishes()
       this.persist()
     },
     logout() {
+      this.token = ''
       this.user = null
       this.persist()
+    },
+    async refreshDishes() {
+      if (!this.token) return
+      const dishes = await this.runRemote(() => kitchenApi.listDishes(this.token))
+      this.dishes = dishes
+      if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      this.persist()
+    },
+    async ensureRemoteDishes() {
+      if (!this.token || this.loading) return
+      if (this.dishes.length >= MIN_REAL_DISH_COUNT && this.dishes.some((dish) => dish.sourceType === 'system_sync')) return
+      try {
+        await this.refreshDishes()
+      } catch {
+        if (!this.dishes.length) this.dishes = seedDishes
+      }
+    },
+    async loadDish(id: string) {
+      if (!this.token) return this.getDish(id)
+      try {
+        const dish = await this.runRemote(() => kitchenApi.getDish(this.token, id))
+        const index = this.dishes.findIndex((item) => item.id === id)
+        if (index >= 0) this.dishes.splice(index, 1, dish)
+        else this.dishes.unshift(dish)
+        this.persist()
+        return dish
+      } catch {
+        return this.getDish(id)
+      }
     },
     getDish(id: string) {
       return this.dishes.find((dish) => dish.id === id)
     },
-    dishesByCategory(category: DishCategory | 'all', keyword = '') {
+    dishSourceType(dish: Dish) {
+      return sourceTypeOf(dish)
+    },
+    dishSourceLabel(dish: Dish) {
+      return sourceLabelOf(dish)
+    },
+    canEditDish(dish: Dish) {
+      return canUserEditDish(dish, this.user)
+    },
+    dishesByCategory(category: DishCategory | 'all', keyword = '', source: DishSourceFilter = 'all') {
       const normalized = keyword.trim().toLowerCase()
       return this.dishes.filter((dish) => {
         const matchCategory = category === 'all' || dish.category === category
+        const matchSource = source === 'all' || sourceTypeOf(dish) === source
         const haystack = [dish.name, dish.description, ...dish.tasteTags, ...dish.ingredients.map((item) => item.name)].join(' ').toLowerCase()
-        return matchCategory && (!normalized || haystack.includes(normalized))
+        return matchCategory && matchSource && (!normalized || haystack.includes(normalized))
       })
     },
     addToMenu(dishId: string) {
@@ -357,7 +456,14 @@ export const useKitchenStore = defineStore('kitchen', {
       }
       this.persist()
     },
-    createDish(input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+    async createDish(input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+      if (this.token) {
+        const dish = await this.runRemote(() => kitchenApi.createDish(this.token, input))
+        this.dishes.unshift(dish)
+        this.persist()
+        return dish.id
+      }
+
       const base = seedDishes[0]
       const dish: Dish = {
         ...base,
@@ -371,11 +477,30 @@ export const useKitchenStore = defineStore('kitchen', {
         servings: input.servings,
         rating: 0,
         ratingCount: 0,
-        isFavorite: false
+        isFavorite: false,
+        sourceType: 'user_created',
+        sourceName: '用户录入',
+        ownerUserId: this.user?.id
       }
       this.dishes.unshift(dish)
       this.persist()
       return dish.id
+    },
+    async updateDish(id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+      const existing = this.getDish(id)
+      if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权编辑这道菜')
+
+      if (this.token) {
+        const dish = await this.runRemote(() => kitchenApi.updateDish(this.token, id, input))
+        const index = this.dishes.findIndex((item) => item.id === id)
+        if (index >= 0) this.dishes.splice(index, 1, dish)
+        this.persist()
+        return dish.id
+      }
+
+      Object.assign(existing, input)
+      this.persist()
+      return existing.id
     }
   }
 })

@@ -1,0 +1,50 @@
+- generic [ref=e12]:
+  - complementary [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]: 掌
+      - generic [ref=e16]:
+        - strong [ref=e17]: 掌勺后台
+        - generic [ref=e18]: Kitchen Ops
+    - navigation [ref=e19]:
+      - button "⌁ 总览" [ref=e20] [cursor=pointer]:
+        - generic [ref=e21]: ⌁
+        - text: 总览
+      - button "□ 菜品" [ref=e22] [cursor=pointer]:
+        - generic [ref=e23]: □
+        - text: 菜品
+      - button "○ 用户" [ref=e24] [cursor=pointer]:
+        - generic [ref=e25]: ○
+        - text: 用户
+      - button "◇ 分类" [ref=e26] [cursor=pointer]:
+        - generic [ref=e27]: ◇
+        - text: 分类
+    - button "退出" [ref=e28] [cursor=pointer]
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: Operations
+        - heading "总览" [level=1] [ref=e33]
+      - button "↻" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - article [ref=e37]:
+        - generic [ref=e38]: 用户
+        - strong [ref=e39]: "2"
+      - article [ref=e40]:
+        - generic [ref=e41]: 菜品
+        - strong [ref=e42]: "364"
+      - article [ref=e43]:
+        - generic [ref=e44]: 后台同步
+        - strong [ref=e45]: "364"
+      - article [ref=e46]:
+        - generic [ref=e47]: 用户录入
+        - strong [ref=e48]: "0"
+    - generic [ref=e50]:
+      - article [ref=e51]:
+        - generic [ref=e52]: 同步来源
+        - strong [ref=e53]: HowToCook
+      - article [ref=e54]:
+        - generic [ref=e55]: 分类数
+        - strong [ref=e56]: "11"
+      - article [ref=e57]:
+        - generic [ref=e58]: 做菜记录
+        - strong [ref=e59]: "0"

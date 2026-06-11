@@ -6,7 +6,7 @@ import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
-import { PrismaClient, type User } from '@prisma/client'
+import { PrismaClient, type Dish, type User } from '@prisma/client'
 import { z } from 'zod'
 import { ensureDatabase } from './db-init.js'
 import { sampleDishes } from './sample-data.js'
@@ -14,9 +14,17 @@ import { sampleDishes } from './sample-data.js'
 const prisma = new PrismaClient()
 const app = express()
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+const rootDir = path.resolve(dirname, '..', '..')
 const uploadDir = path.resolve(dirname, '..', 'uploads')
+const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.json')
 const port = Number(process.env.PORT || 3001)
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
+const configuredAdminEmails = new Set(
+  String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+)
 
 fs.mkdirSync(uploadDir, { recursive: true })
 
@@ -30,8 +38,31 @@ interface AuthedRequest extends Request {
   user?: User
 }
 
+type RecipeImportSource = {
+  name: string
+  recipeSource?: string
+  recipeLicense?: string
+  localImage?: string
+}
+
 function sign(user: User) {
   return jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: '30d' })
+}
+
+function publicUser(user: User) {
+  const { passwordHash, ...safeUser } = user
+  return safeUser
+}
+
+function roleForEmail(email: string) {
+  return configuredAdminEmails.has(email.toLowerCase()) ? 'admin' : 'user'
+}
+
+async function ensureConfiguredRole(user: User) {
+  if (!user.email) return user
+  const role = roleForEmail(user.email)
+  if (role === user.role) return user
+  return prisma.user.update({ where: { id: user.id }, data: { role } })
 }
 
 async function auth(req: AuthedRequest, res: Response, next: NextFunction) {
@@ -55,15 +86,42 @@ async function auth(req: AuthedRequest, res: Response, next: NextFunction) {
   }
 }
 
-async function seedUserDishes(userId: string) {
-  const count = await prisma.dish.count({ where: { userId } })
+function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ message: 'Admin only' })
+    return
+  }
+  next()
+}
+
+function readRecipeSources() {
+  try {
+    return JSON.parse(fs.readFileSync(recipeSourcesFile, 'utf8')) as RecipeImportSource[]
+  } catch {
+    return []
+  }
+}
+
+function syncKeyFromRecipeSource(source: RecipeImportSource | undefined, name: string) {
+  const marker = '/blob/master/'
+  const recipeSource = source?.recipeSource || ''
+  const index = recipeSource.indexOf(marker)
+  if (index >= 0) return `howtocook:${decodeURIComponent(recipeSource.slice(index + marker.length))}`
+  return `legacy-howtocook:${name}`
+}
+
+async function seedSystemDishesFromSample() {
+  const count = await prisma.dish.count({ where: { sourceType: 'system_sync' } })
   if (count > 0) return
 
+  const sourceByName = new Map(readRecipeSources().map((source) => [source.name, source]))
+
   await Promise.all(
-    sampleDishes.map((dish) =>
-      prisma.dish.create({
+    sampleDishes.map((dish) => {
+      const source = sourceByName.get(dish.name)
+      return prisma.dish.create({
         data: {
-          userId,
+          ownerUserId: null,
           name: dish.name,
           category: dish.category,
           coverImage: dish.coverImage,
@@ -72,6 +130,12 @@ async function seedUserDishes(userId: string) {
           estimatedMinutes: dish.estimatedMinutes,
           servings: dish.servings,
           tasteTags: JSON.stringify(dish.tasteTags),
+          sourceType: 'system_sync',
+          sourceName: 'HowToCook',
+          sourceUrl: source?.recipeSource,
+          sourceLicense: source?.recipeLicense || 'HowToCook / Unlicense public domain dedication',
+          syncKey: syncKeyFromRecipeSource(source, dish.name),
+          status: 'published',
           ingredients: {
             create: dish.ingredients.map(([groupType, name, amount], index) => ({
               groupType,
@@ -93,16 +157,44 @@ async function seedUserDishes(userId: string) {
           }
         }
       })
-    )
+    })
   )
+}
+
+function visibleDishWhere(userId: string) {
+  return {
+    OR: [
+      { sourceType: 'system_sync', status: 'published' },
+      { ownerUserId: userId }
+    ]
+  }
+}
+
+function canEditDish(dish: Pick<Dish, 'ownerUserId' | 'sourceType'>, user: User) {
+  return user.role === 'admin' || (dish.sourceType === 'user_created' && dish.ownerUserId === user.id)
+}
+
+async function findVisibleDish(id: string, userId: string) {
+  return prisma.dish.findFirst({
+    where: { id, ...visibleDishWhere(userId) },
+    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
+  })
+}
+
+async function findMenuItemForUser(itemId: string, userId: string) {
+  return prisma.menuItem.findFirst({
+    where: { id: itemId, menu: { userId } },
+    include: { dish: true, menu: true }
+  })
 }
 
 function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function param(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] || '' : value || ''
+function param(value: unknown) {
+  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : ''
+  return typeof value === 'string' ? value : ''
 }
 
 async function todayMenu(userId: string) {
@@ -131,11 +223,11 @@ app.post('/auth/register', async (req, res) => {
       email: body.email,
       passwordHash,
       nickname: body.email.split('@')[0],
-      avatarUrl: '/static/assets/illustrations/png/chef_avatar_256.png'
+      avatarUrl: '/static/assets/illustrations/png/chef_avatar_256.png',
+      role: roleForEmail(body.email)
     }
   })
-  await seedUserDishes(user.id)
-  res.json({ token: sign(user), user })
+  res.json({ token: sign(user), user: publicUser(user) })
 })
 
 app.post('/auth/login/email', async (req, res) => {
@@ -144,14 +236,14 @@ app.post('/auth/login/email', async (req, res) => {
   if (!user) {
     const passwordHash = await bcrypt.hash(body.password, 10)
     user = await prisma.user.create({
-      data: { email: body.email, passwordHash, nickname: body.email.split('@')[0] }
+      data: { email: body.email, passwordHash, nickname: body.email.split('@')[0], role: roleForEmail(body.email) }
     })
-    await seedUserDishes(user.id)
   } else if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
     res.status(401).json({ message: '邮箱或密码错误' })
     return
   }
-  res.json({ token: sign(user), user })
+  user = await ensureConfiguredRole(user)
+  res.json({ token: sign(user), user: publicUser(user) })
 })
 
 app.post('/auth/login/wechat', async (req, res) => {
@@ -161,19 +253,42 @@ app.post('/auth/login/wechat', async (req, res) => {
     create: { wechatOpenId: openId, nickname: '小厨房', avatarUrl: '/static/assets/illustrations/png/chef_avatar_256.png' },
     update: {}
   })
-  await seedUserDishes(user.id)
-  res.json({ token: sign(user), user })
+  res.json({ token: sign(user), user: publicUser(user) })
 })
 
 app.post('/auth/logout', auth, (_req, res) => {
   res.json({ ok: true })
 })
 
+app.get('/categories', auth, async (_req, res) => {
+  const categories = await prisma.category.findMany({
+    where: { enabled: true },
+    orderBy: { sortOrder: 'asc' }
+  })
+  res.json(categories)
+})
+
 app.get('/dishes', auth, async (req: AuthedRequest, res) => {
+  const source = param(req.query.source)
+  const category = param(req.query.category)
+  const q = param(req.query.q).trim()
+  const filters: object[] = [visibleDishWhere(req.user!.id)]
+  if (source === 'system_sync' || source === 'user_created') filters.push({ sourceType: source })
+  if (category) filters.push({ category })
+  if (q) {
+    filters.push({
+      OR: [
+        { name: { contains: q } },
+        { description: { contains: q } },
+        { tasteTags: { contains: q } }
+      ]
+    })
+  }
+
   const dishes = await prisma.dish.findMany({
-    where: { userId: req.user!.id },
+    where: { AND: filters },
     orderBy: { createdAt: 'desc' },
-    include: { ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
+    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
   })
   res.json(dishes)
 })
@@ -196,7 +311,7 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
 
   const dish = await prisma.dish.create({
     data: {
-      userId: req.user!.id,
+      ownerUserId: req.user!.id,
       name: body.name,
       category: body.category,
       coverImage: body.coverImage,
@@ -205,6 +320,9 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
       estimatedMinutes: body.estimatedMinutes,
       servings: body.servings,
       tasteTags: JSON.stringify(body.tasteTags),
+      sourceType: 'user_created',
+      sourceName: '用户录入',
+      status: 'published',
       ingredients: {
         create: body.ingredients.map((item, index) => ({ ...item, sortOrder: index }))
       },
@@ -219,10 +337,7 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
 
 app.get('/dishes/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
-  const dish = await prisma.dish.findFirst({
-    where: { id, userId: req.user!.id },
-    include: { ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
-  })
+  const dish = await findVisibleDish(id, req.user!.id)
   if (!dish) {
     res.status(404).json({ message: 'Dish not found' })
     return
@@ -232,16 +347,50 @@ app.get('/dishes/:id', auth, async (req: AuthedRequest, res) => {
 
 app.put('/dishes/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
+  const existing = await findVisibleDish(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+  if (!canEditDish(existing, req.user!)) {
+    res.status(403).json({ message: '系统同步菜品不可由普通用户编辑' })
+    return
+  }
+  const body = z
+    .object({
+      name: z.string().min(1).optional(),
+      category: z.string().optional(),
+      coverImage: z.string().optional(),
+      description: z.string().optional(),
+      difficulty: z.string().optional(),
+      estimatedMinutes: z.number().int().positive().optional(),
+      servings: z.number().int().positive().optional(),
+      tasteTags: z.array(z.string()).optional(),
+      isFavorite: z.boolean().optional(),
+      status: z.enum(['draft', 'published', 'archived']).optional()
+    })
+    .parse(req.body)
+  const { tasteTags, ...data } = body
   const dish = await prisma.dish.update({
-    where: { id, userId: req.user!.id },
-    data: req.body
+    where: { id },
+    data: { ...data, ...(tasteTags ? { tasteTags: JSON.stringify(tasteTags) } : {}) },
+    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
   })
   res.json(dish)
 })
 
 app.delete('/dishes/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
-  await prisma.dish.delete({ where: { id, userId: req.user!.id } })
+  const existing = await findVisibleDish(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+  if (!canEditDish(existing, req.user!)) {
+    res.status(403).json({ message: '系统同步菜品不可由普通用户删除' })
+    return
+  }
+  await prisma.dish.delete({ where: { id } })
   res.json({ ok: true })
 })
 
@@ -251,6 +400,11 @@ app.get('/menus/today', auth, async (req: AuthedRequest, res) => {
 
 app.post('/menus/today/items', auth, async (req: AuthedRequest, res) => {
   const body = z.object({ dishId: z.string(), quantity: z.number().int().positive().default(1), note: z.string().default('') }).parse(req.body)
+  const dish = await findVisibleDish(body.dishId, req.user!.id)
+  if (!dish) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
   const menu = await todayMenu(req.user!.id)
   const item = await prisma.menuItem.create({
     data: {
@@ -265,8 +419,13 @@ app.post('/menus/today/items', auth, async (req: AuthedRequest, res) => {
   res.status(201).json(item)
 })
 
-app.put('/menus/today/items/:id', auth, async (req, res) => {
+app.put('/menus/today/items/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
+  const existing = await findMenuItemForUser(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   const item = await prisma.menuItem.update({
     where: { id },
     data: req.body,
@@ -275,14 +434,26 @@ app.put('/menus/today/items/:id', auth, async (req, res) => {
   res.json(item)
 })
 
-app.delete('/menus/today/items/:id', auth, async (req, res) => {
+app.delete('/menus/today/items/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
+  const existing = await findMenuItemForUser(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   await prisma.menuItem.delete({ where: { id } })
   res.json({ ok: true })
 })
 
-app.post('/menus/today/reorder', auth, async (req, res) => {
+app.post('/menus/today/reorder', auth, async (req: AuthedRequest, res) => {
   const body = z.object({ itemIds: z.array(z.string()) }).parse(req.body)
+  const ownedCount = await prisma.menuItem.count({
+    where: { id: { in: body.itemIds }, menu: { userId: req.user!.id } }
+  })
+  if (ownedCount !== body.itemIds.length) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   await prisma.$transaction(body.itemIds.map((id, index) => prisma.menuItem.update({ where: { id }, data: { sortOrder: index + 1 } })))
   res.json({ ok: true })
 })
@@ -293,8 +464,13 @@ app.post('/menus/today/submit', auth, async (req: AuthedRequest, res) => {
   res.json(updated)
 })
 
-app.post('/cook/start', auth, async (req, res) => {
+app.post('/cook/start', auth, async (req: AuthedRequest, res) => {
   const body = z.object({ menuItemId: z.string() }).parse(req.body)
+  const existing = await findMenuItemForUser(body.menuItemId, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   const item = await prisma.menuItem.update({
     where: { id: body.menuItemId },
     data: { cookStatus: 'cooking', currentStep: 1 },
@@ -303,15 +479,25 @@ app.post('/cook/start', auth, async (req, res) => {
   res.json(item)
 })
 
-app.put('/cook/:id/step', auth, async (req, res) => {
+app.put('/cook/:id/step', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
   const body = z.object({ currentStep: z.number().int().positive() }).parse(req.body)
+  const existing = await findMenuItemForUser(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   const item = await prisma.menuItem.update({ where: { id }, data: { currentStep: body.currentStep } })
   res.json(item)
 })
 
-app.post('/cook/:id/finish', auth, async (req, res) => {
+app.post('/cook/:id/finish', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
+  const existing = await findMenuItemForUser(id, req.user!.id)
+  if (!existing) {
+    res.status(404).json({ message: 'Menu item not found' })
+    return
+  }
   const item = await prisma.menuItem.update({ where: { id }, data: { cookStatus: 'done' }, include: { dish: true } })
   res.json(item)
 })
@@ -351,7 +537,7 @@ app.get('/records/:id', auth, async (req: AuthedRequest, res) => {
 
 app.post('/cook/:id/record', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
-  const item = await prisma.menuItem.findUnique({ where: { id } })
+  const item = await findMenuItemForUser(id, req.user!.id)
   if (!item) {
     res.status(404).json({ message: 'Menu item not found' })
     return
@@ -380,8 +566,13 @@ app.post('/cook/:id/record', auth, async (req: AuthedRequest, res) => {
   res.status(201).json(record)
 })
 
-app.post('/records/:id/rating', auth, async (req, res) => {
+app.post('/records/:id/rating', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
+  const record = await prisma.cookRecord.findFirst({ where: { id, userId: req.user!.id } })
+  if (!record) {
+    res.status(404).json({ message: 'Record not found' })
+    return
+  }
   const body = z
     .object({
       tasteScore: z.number(),
@@ -411,13 +602,92 @@ app.get('/ratings/me', auth, async (req: AuthedRequest, res) => {
 })
 
 app.get('/me/stats', auth, async (req: AuthedRequest, res) => {
-  const [dishCount, recordCount, ratings] = await Promise.all([
-    prisma.dish.count({ where: { userId: req.user!.id } }),
+  const [ownDishCount, visibleDishCount, recordCount, ratings] = await Promise.all([
+    prisma.dish.count({ where: { ownerUserId: req.user!.id } }),
+    prisma.dish.count({ where: visibleDishWhere(req.user!.id) }),
     prisma.cookRecord.count({ where: { userId: req.user!.id } }),
     prisma.rating.findMany({ where: { record: { userId: req.user!.id } }, select: { overallScore: true } })
   ])
   const averageRating = ratings.length ? Number((ratings.reduce((sum, item) => sum + item.overallScore, 0) / ratings.length).toFixed(1)) : 0
-  res.json({ dishCount, recordCount, averageRating })
+  res.json({ dishCount: ownDishCount, visibleDishCount, recordCount, averageRating })
+})
+
+app.get('/admin/overview', auth, requireAdmin, async (_req, res) => {
+  const [userCount, dishCount, systemDishCount, userDishCount, categoryCount, recordCount] = await Promise.all([
+    prisma.user.count(),
+    prisma.dish.count(),
+    prisma.dish.count({ where: { sourceType: 'system_sync' } }),
+    prisma.dish.count({ where: { sourceType: 'user_created' } }),
+    prisma.category.count(),
+    prisma.cookRecord.count()
+  ])
+
+  res.json({ userCount, dishCount, systemDishCount, userDishCount, categoryCount, recordCount })
+})
+
+app.get('/admin/users', auth, requireAdmin, async (req, res) => {
+  const q = param(req.query.q).trim()
+  const users = await prisma.user.findMany({
+    where: q
+      ? {
+          OR: [
+            { nickname: { contains: q } },
+            { email: { contains: q } },
+            { wechatOpenId: { contains: q } }
+          ]
+        }
+      : undefined,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      nickname: true,
+      avatarUrl: true,
+      email: true,
+      wechatOpenId: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: { select: { dishes: true, menus: true, cookRecords: true } }
+    }
+  })
+  res.json(users)
+})
+
+app.get('/admin/dishes', auth, requireAdmin, async (req, res) => {
+  const q = param(req.query.q).trim()
+  const source = param(req.query.source)
+  const category = param(req.query.category)
+  const filters: object[] = []
+  if (q) {
+    filters.push({
+      OR: [
+        { name: { contains: q } },
+        { description: { contains: q } },
+        { sourceUrl: { contains: q } }
+      ]
+    })
+  }
+  if (source === 'system_sync' || source === 'user_created') filters.push({ sourceType: source })
+  if (category) filters.push({ category })
+
+  const dishes = await prisma.dish.findMany({
+    where: filters.length ? { AND: filters } : undefined,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      categoryRef: true,
+      owner: { select: { id: true, nickname: true, email: true } },
+      _count: { select: { ingredients: true, steps: true, cookRecords: true } }
+    }
+  })
+  res.json(dishes)
+})
+
+app.get('/admin/categories', auth, requireAdmin, async (_req, res) => {
+  const categories = await prisma.category.findMany({
+    orderBy: { sortOrder: 'asc' },
+    include: { _count: { select: { dishes: true } } }
+  })
+  res.json(categories)
 })
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
@@ -430,6 +700,7 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 await ensureDatabase(prisma)
+await seedSystemDishesFromSample()
 
 app.listen(port, () => {
   console.log(`Zhangshao menu API listening on http://localhost:${port}`)

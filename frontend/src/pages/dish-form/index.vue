@@ -38,7 +38,7 @@
         P1 表单已保留核心字段；食材、步骤、图片编辑可继续扩展到完整后台表单。
       </view>
     </view>
-    <button class="primary-btn save" @tap="save">保存菜品</button>
+    <button class="primary-btn save" @tap="save">{{ store.loading ? '保存中...' : '保存菜品' }}</button>
   </AppPage>
 </template>
 
@@ -73,35 +73,62 @@ const editing = computed(() => Boolean(dishId.value))
 onLoad((query) => {
   if (query?.id && typeof query.id === 'string') {
     dishId.value = query.id
-    const dish = store.getDish(query.id)
-    if (dish) Object.assign(form, {
-      name: dish.name,
-      category: dish.category,
-      description: dish.description,
-      difficulty: dish.difficulty,
-      estimatedMinutes: dish.estimatedMinutes,
-      servings: dish.servings
-    })
   }
 })
 
-onShow(() => {
+onShow(async () => {
   store.hydrate()
-  if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  if (!store.user) {
+    uni.reLaunch({ url: '/pages/login/index' })
+    return
+  }
+  if (dishId.value) await loadDishForEdit()
 })
 
-function save() {
+async function loadDishForEdit() {
+  const dish = await store.loadDish(dishId.value)
+  if (!dish) return
+  if (!store.canEditDish(dish)) {
+    uni.showToast({ title: '后台同步菜品不可编辑', icon: 'none' })
+    setTimeout(() => uni.navigateBack(), 500)
+    return
+  }
+  Object.assign(form, {
+    name: dish.name,
+    category: dish.category,
+    description: dish.description,
+    difficulty: dish.difficulty,
+    estimatedMinutes: dish.estimatedMinutes,
+    servings: dish.servings
+  })
+}
+
+async function save() {
   if (!form.name.trim()) {
     uni.showToast({ title: '请输入菜品名称', icon: 'none' })
     return
   }
   if (editing.value) {
-    uni.showToast({ title: '编辑保存已预留', icon: 'none' })
-    uni.navigateBack()
+    const dish = store.getDish(dishId.value)
+    if (dish && !store.canEditDish(dish)) {
+      uni.showToast({ title: '后台同步菜品不可编辑', icon: 'none' })
+      return
+    }
+    try {
+      await store.updateDish(dishId.value, form)
+      uni.showToast({ title: '已保存', icon: 'success' })
+      uni.navigateBack()
+    } catch {
+      uni.showToast({ title: store.apiError || '保存失败', icon: 'none' })
+    }
     return
   }
-  const id = store.createDish(form)
-  uni.redirectTo({ url: `/pages/dish-detail/index?id=${id}` })
+  try {
+    const id = await store.createDish(form)
+    uni.redirectTo({ url: `/pages/dish-detail/index?id=${id}` })
+  } catch {
+    uni.showToast({ title: store.apiError || '保存失败', icon: 'none' })
+  }
 }
 </script>
 

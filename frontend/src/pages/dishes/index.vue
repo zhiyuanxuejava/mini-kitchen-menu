@@ -9,13 +9,27 @@
       <input v-model="keyword" placeholder="搜索菜名 / 食材 / 做法" />
     </view>
 
-    <view class="category-tabs">
+    <scroll-view scroll-x class="category-tabs" show-scrollbar="false">
+      <view class="tab-track">
       <button
         v-for="item in categories"
         :key="item.key"
         :class="['category', activeCategory === item.key ? 'active' : '']"
         hover-class="tap"
         @tap="activeCategory = item.key"
+      >
+        {{ item.label }}
+      </button>
+      </view>
+    </scroll-view>
+
+    <view class="source-tabs card">
+      <button
+        v-for="item in sourceOptions"
+        :key="item.key"
+        :class="{ active: activeSource === item.key }"
+        hover-class="tap"
+        @tap="activeSource = item.key"
       >
         {{ item.label }}
       </button>
@@ -41,6 +55,8 @@
       @view="viewDish"
       @add="store.addToMenu"
     />
+    <view v-if="store.loading" class="loading-card card">正在同步后台菜品...</view>
+    <view v-if="store.apiError" class="api-error card">{{ store.apiError }}</view>
     <EmptyState v-if="!dishes.length" title="没有找到菜品" desc="换个关键词，或新增一道自己的拿手菜。" />
 
     <BottomTabbar active="dishes" />
@@ -56,27 +72,34 @@ import DishListItem from '@/components/DishListItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/seed'
-import type { DishCategory } from '@/data/types'
+import type { DishCategory, DishSourceType } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 
 const store = useKitchenStore()
 const keyword = ref('')
 const activeCategory = ref<DishCategory | 'all'>('all')
+const activeSource = ref<DishSourceType | 'all'>('all')
 const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).map((key) => ({
   key,
   label: categoryLabels[key]
 }))
+const sourceOptions: Array<{ key: DishSourceType | 'all'; label: string }> = [
+  { key: 'all', label: '全部来源' },
+  { key: 'system_sync', label: '后台同步' },
+  { key: 'user_created', label: '我录入的' }
+]
 
 onLoad((query) => {
   if (query?.keyword && typeof query.keyword === 'string') keyword.value = query.keyword
 })
 
-onShow(() => {
+onShow(async () => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else await store.ensureRemoteDishes()
 })
 
-const dishes = computed(() => store.dishesByCategory(activeCategory.value, keyword.value))
+const dishes = computed(() => store.dishesByCategory(activeCategory.value, keyword.value, activeSource.value))
 
 function viewDish(id: string) {
   uni.navigateTo({ url: `/pages/dish-detail/index?id=${id}` })
@@ -115,19 +138,24 @@ function goCreate() {
 
 .category-tabs {
   width: 100%;
-  display: grid;
-  grid-template-columns: 124rpx repeat(4, 1fr);
-  gap: 14rpx;
   margin: 26rpx 0 22rpx;
+  white-space: nowrap;
+}
+
+.tab-track {
+  display: flex;
+  gap: 14rpx;
+  min-width: max-content;
 }
 
 .category {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 0;
   height: 66rpx;
-  padding: 0 10rpx;
+  padding: 0 24rpx;
   border: 1rpx solid $border;
   border-radius: 28rpx;
   background: #fff;
@@ -140,6 +168,28 @@ function goCreate() {
   border-color: $primary;
   color: $primary;
   background: #fff8f2;
+}
+
+.source-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 72rpx;
+  padding: 8rpx;
+  margin-bottom: 22rpx;
+  border-radius: 24rpx;
+}
+
+.source-tabs button {
+  height: 56rpx;
+  border-radius: 18rpx;
+  color: $text-sub;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.source-tabs button.active {
+  background: $text-main;
+  color: #fff;
 }
 
 .filter-row {
@@ -207,5 +257,18 @@ function goCreate() {
   bottom: -2rpx;
   width: 118rpx;
   height: 92rpx;
+}
+
+.loading-card,
+.api-error {
+  padding: 22rpx;
+  margin-bottom: 18rpx;
+  color: $text-sub;
+  font-size: 25rpx;
+  text-align: center;
+}
+
+.api-error {
+  color: #d34b2f;
 }
 </style>

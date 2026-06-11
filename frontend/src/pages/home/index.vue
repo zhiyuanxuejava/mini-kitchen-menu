@@ -72,9 +72,10 @@ import { useKitchenStore } from '@/stores/kitchen'
 const store = useKitchenStore()
 const offset = ref(0)
 
-onShow(() => {
+onShow(async () => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else await store.ensureRemoteDishes()
 })
 
 const dayLabel = computed(() => {
@@ -99,6 +100,7 @@ const quickEntries = computed(() => [
 ])
 
 function shuffle() {
+  if (!store.dishes.length) return
   offset.value = (offset.value + 2) % store.dishes.length
 }
 

@@ -4,6 +4,7 @@
     <view class="content">
       <view class="row-head">
         <text class="name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
+        <text :class="['source-chip', dish.sourceType === 'user_created' ? 'mine' : 'system']">{{ sourceLabel }}</text>
         <image class="more" :src="icons.more" mode="aspectFit" />
       </view>
       <view class="meta-row">
@@ -27,12 +28,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { icons } from '@/data/assets'
 import type { Dish } from '@/data/types'
 
-defineProps<{
+const props = defineProps<{
   dish: Dish
 }>()
+
+const sourceLabel = computed(() => (props.dish.sourceType === 'user_created' ? '用户录入' : '后台同步'))
 
 defineEmits<{
   view: [id: string]
@@ -70,9 +74,28 @@ defineEmits<{
 
 .name {
   flex: 1;
+  min-width: 0;
   color: $text-main;
   font-size: 29rpx;
   font-weight: 900;
+}
+
+.source-chip {
+  flex: 0 0 auto;
+  padding: 5rpx 10rpx;
+  border-radius: 999rpx;
+  font-size: 19rpx;
+  font-weight: 800;
+}
+
+.source-chip.system {
+  background: #fff3ea;
+  color: $primary;
+}
+
+.source-chip.mine {
+  background: $success-light;
+  color: $success;
 }
 
 .more {

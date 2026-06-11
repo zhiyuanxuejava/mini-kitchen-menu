@@ -20,12 +20,13 @@
         <input v-model="password" password placeholder="请输入密码" />
       </view>
       <button class="primary-btn submit" hover-class="tap" @tap="submit">
-        {{ mode === 'login' ? '登录并进入厨房' : '注册并开始点菜' }}
+        {{ store.loading ? '连接厨房中...' : mode === 'login' ? '登录并进入厨房' : '注册并开始点菜' }}
       </button>
       <button class="wechat" hover-class="tap" @tap="wechatLogin">
         <image :src="icons.chefHat" mode="aspectFit" />
         <text>微信一键登录</text>
       </button>
+      <text v-if="store.apiError" class="error-text">{{ store.apiError }}</text>
     </view>
   </AppPage>
 </template>
@@ -47,19 +48,27 @@ onShow(() => {
   if (store.user) uni.reLaunch({ url: '/pages/home/index' })
 })
 
-function submit() {
+async function submit() {
   if (!email.value.trim() || !password.value.trim()) {
     uni.showToast({ title: '请输入邮箱和密码', icon: 'none' })
     return
   }
-  if (mode.value === 'login') store.loginWithEmail(email.value.trim())
-  else store.registerWithEmail(email.value.trim())
-  uni.reLaunch({ url: '/pages/home/index' })
+  try {
+    if (mode.value === 'login') await store.loginWithEmail(email.value.trim(), password.value.trim())
+    else await store.registerWithEmail(email.value.trim(), password.value.trim())
+    uni.reLaunch({ url: '/pages/home/index' })
+  } catch {
+    uni.showToast({ title: store.apiError || '登录失败', icon: 'none' })
+  }
 }
 
-function wechatLogin() {
-  store.loginWithWechat()
-  uni.reLaunch({ url: '/pages/home/index' })
+async function wechatLogin() {
+  try {
+    await store.loginWithWechat()
+    uni.reLaunch({ url: '/pages/home/index' })
+  } catch {
+    uni.showToast({ title: store.apiError || '微信登录失败', icon: 'none' })
+  }
 }
 </script>
 
@@ -162,5 +171,13 @@ function wechatLogin() {
 .wechat image {
   width: 40rpx;
   height: 40rpx;
+}
+
+.error-text {
+  display: block;
+  margin-top: 18rpx;
+  color: #d34b2f;
+  font-size: 24rpx;
+  text-align: center;
 }
 </style>
