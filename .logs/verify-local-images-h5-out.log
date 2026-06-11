@@ -1,0 +1,19 @@
+
+> dev:h5
+> uni --host 127.0.0.1 --port 5179
+
+Please note that in running mode, due to log output, sourcemap, and uncompressed source code, the performance and package size are not as good as release mode.
+Vite is compiled on demand, and clicking on an uncompiled page at runtime will compile first and then load, resulting in a slower display, and there is no such problem after release.
+Compiler version: 5.12（vue3）
+Compiling...
+[36m
+  vite v5.2.8[39m[32m dev server running at:
+[39m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5179[22m/[39m
+
+  [36mready in 2835ms.[39m
+
+[2m下午2:57:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/login/index.vue, /src/pages/home/index.vue, /src/pages/dishes/index.vue, /src/pages/dish-detail/index.vue[22m
+[2m下午2:57:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue[22m
+[2m下午2:58:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dish-detail/index.vue[22m
+[2m下午2:59:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/login/index.vue, /src/pages/home/index.vue, /src/pages/dishes/index.vue, /src/pages/dish-detail/index.vue[22m

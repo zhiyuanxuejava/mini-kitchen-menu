@@ -1,0 +1,64 @@
+
+> dev:frontend:h5:lan
+> npm --workspace frontend run dev:h5:lan
+
+
+> dev:h5:lan
+> uni --host 0.0.0.0 --port 5173
+
+Please note that in running mode, due to log output, sourcemap, and uncompressed source code, the performance and package size are not as good as release mode.
+Vite is compiled on demand, and clicking on an uncompiled page at runtime will compile first and then load, resulting in a slower display, and there is no such problem after release.
+Compiler version: 5.12（vue3）
+Compiling...
+[36m
+  vite v5.2.8[39m[32m dev server running at:
+[39m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://26.74.77.246:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.20.10.5:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.192.1:[1m5173[22m/[39m
+
+  [36mready in 37276ms.[39m
+
+[2m上午11:14:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue?vue&type=style&index=0&scoped=9f184864&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/DishCard.vue?vue&type=style&index=0&scoped=e9df36b3&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BottomTabbar.vue?vue&type=style&index=0&scoped=8e113fb4&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/DishListItem.vue?vue&type=style&index=0&scoped=046220b1&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue?vue&type=style&index=0&scoped=9f184864&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue?vue&type=style&index=0&scoped=2c5296db&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/TodayMenuSummary.vue?vue&type=style&index=0&scoped=7d4a7c55&lang.scss, /src/components/TodayMenuSummary.vue[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/CookDishCard.vue?vue&type=style&index=0&scoped=691160e8&lang.scss[22m
+[2m上午11:28:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/mine/index.vue?vue&type=style&index=0&scoped=9023ef44&lang.scss[22m
+[2m上午11:29:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/menu/index.vue?vue&type=style&index=0&scoped=1d0bddf6&lang.scss, /src/pages/menu/index.vue[22m
+[2m上午11:30:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/theme.scss[22m
+[2m上午11:31:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/TodayMenuSummary.vue?vue&type=style&index=0&scoped=7d4a7c55&lang.scss[22m
+[2m上午11:31:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue?vue&type=style&index=0&scoped=2c5296db&lang.scss[22m
+[2m上午11:36:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue?vue&type=style&index=0&scoped=2c5296db&lang.scss[22m
+[2m上午11:36:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/mine/index.vue?vue&type=style&index=0&scoped=9023ef44&lang.scss[22m
+[2m上午11:36:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/rating/index.vue?vue&type=style&index=0&scoped=b92ae595&lang.scss, /src/pages/rating/index.vue[22m
+[2m上午11:39:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppNavbar.vue?vue&type=style&index=0&scoped=2694e7c3&lang.scss, /src/components/AppNavbar.vue[22m
+[2m上午11:39:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/cook-step/index.vue?vue&type=style&index=0&scoped=d1053de6&lang.scss, /src/pages/cook-step/index.vue[22m
+[2m上午11:39:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppNavbar.vue[22m
+[2m下午12:05:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/cook/index.vue[22m
+[2m下午12:05:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue?vue&type=style&index=0&scoped=2c5296db&lang.scss[22m
+[2m下午12:30:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BottomTabbar.vue?vue&type=style&index=0&scoped=8e113fb4&lang.scss[22m
+[2m下午12:34:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppPage.vue[22m
+[2m下午12:34:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BottomTabbar.vue?vue&type=style&index=0&scoped=8e113fb4&lang.scss[22m
+[2m下午12:36:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BottomTabbar.vue?vue&type=style&index=0&scoped=8e113fb4&lang.scss[22m
+[2m下午12:37:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue[22m
+[2m下午12:37:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/upload/index.vue[22m
+[2m下午12:37:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/mine/index.vue[22m
+[2m下午12:37:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/cook-step/index.vue[22m
+[2m下午12:54:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue[22m
+[2m下午12:54:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/menu/index.vue[22m
+[2m下午12:54:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue[22m
+[2m下午12:56:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/mine/index.vue[22m
+[2m下午12:57:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue[22m
+[2m下午1:01:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue[22m
+[2m下午1:37:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue, /src/pages/rating-list/index.vue, /src/pages/records/index.vue[22m
+[2m下午1:37:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/DishListItem.vue, /src/components/CookDishCard.vue, /src/components/DishCard.vue, /src/components/StepCookCard.vue[22m
+[2m下午1:37:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue, /src/pages/rating-list/index.vue, /src/pages/records/index.vue[22m
+[2m下午1:37:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/StepCookCard.vue[22m
+[2m下午1:37:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue, /src/pages/rating-list/index.vue, /src/pages/records/index.vue[22m
+[2m下午1:43:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/mine/index.vue, /src/pages/home/index.vue, /src/pages/dish-detail/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/cook-step/index.vue, /src/pages/login/index.vue, /src/pages/rating-list/index.vue, /src/pages/records/index.vue[22m

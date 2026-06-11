@@ -1,0 +1,18 @@
+{
+  "name": "mini-kitchen-menu",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:mp-weixin": "npm --workspace frontend run dev:mp-weixin",
+    "build:mp-weixin": "npm --workspace frontend run build:mp-weixin",
+    "dev:frontend:h5": "npm --workspace frontend run dev:h5",
+    "dev:frontend:h5:lan": "npm --workspace frontend run dev:h5:lan",
+    "dev:backend": "npm --workspace backend run dev",
+    "build:backend": "npm --workspace backend run build",
+    "prisma:generate": "npm --workspace backend run prisma:generate",
+    "prisma:migrate": "npm --workspace backend run prisma:migrate"
+  }
+}

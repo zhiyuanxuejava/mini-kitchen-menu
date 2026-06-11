@@ -1,0 +1,7 @@
+npm error Lifecycle script `dev:h5` failed with error:
+npm error code 4294967295
+npm error path D:\work\ai\mini-kitchen-menu\frontend
+npm error workspace zhangshao-menu-frontend
+npm error location D:\work\ai\mini-kitchen-menu\frontend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c uni --host 127.0.0.1 --port 5180

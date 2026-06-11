@@ -1,0 +1,1246 @@
+{
+  "colors": {
+    "primary": "#FF6A1A",
+    "primary2": "#FF8A2A",
+    "primary_light": "#FFF3EA",
+    "green": "#59B347",
+    "green_light": "#F1FAEA",
+    "warning": "#FFB020",
+    "text": "#2B1B14",
+    "subtext": "#7A6A60",
+    "gray": "#606266",
+    "light_border": "#F1E3DA",
+    "page_bg": "#FFFDFB"
+  },
+  "icons": {
+    "tab_home_default": {
+      "svg": "icons/svg/default/home.svg",
+      "png64": "icons/png/64/tab_home_default.png",
+      "png128": "icons/png/128/tab_home_default.png",
+      "png256": "icons/png/256/tab_home_default.png"
+    },
+    "tab_dish_book_default": {
+      "svg": "icons/svg/default/dish_book.svg",
+      "png64": "icons/png/64/tab_dish_book_default.png",
+      "png128": "icons/png/128/tab_dish_book_default.png",
+      "png256": "icons/png/256/tab_dish_book_default.png"
+    },
+    "tab_menu_clipboard_default": {
+      "svg": "icons/svg/default/menu_clipboard.svg",
+      "png64": "icons/png/64/tab_menu_clipboard_default.png",
+      "png128": "icons/png/128/tab_menu_clipboard_default.png",
+      "png256": "icons/png/256/tab_menu_clipboard_default.png"
+    },
+    "tab_cook_pot_default": {
+      "svg": "icons/svg/default/cook_pot.svg",
+      "png64": "icons/png/64/tab_cook_pot_default.png",
+      "png128": "icons/png/128/tab_cook_pot_default.png",
+      "png256": "icons/png/256/tab_cook_pot_default.png"
+    },
+    "tab_mine_user_default": {
+      "svg": "icons/svg/default/mine_user.svg",
+      "png64": "icons/png/64/tab_mine_user_default.png",
+      "png128": "icons/png/128/tab_mine_user_default.png",
+      "png256": "icons/png/256/tab_mine_user_default.png"
+    },
+    "search_default": {
+      "svg": "icons/svg/default/search.svg",
+      "png64": "icons/png/64/search_default.png",
+      "png128": "icons/png/128/search_default.png",
+      "png256": "icons/png/256/search_default.png"
+    },
+    "calendar_default": {
+      "svg": "icons/svg/default/calendar.svg",
+      "png64": "icons/png/64/calendar_default.png",
+      "png128": "icons/png/128/calendar_default.png",
+      "png256": "icons/png/256/calendar_default.png"
+    },
+    "clock_default": {
+      "svg": "icons/svg/default/clock.svg",
+      "png64": "icons/png/64/clock_default.png",
+      "png128": "icons/png/128/clock_default.png",
+      "png256": "icons/png/256/clock_default.png"
+    },
+    "people_default": {
+      "svg": "icons/svg/default/people.svg",
+      "png64": "icons/png/64/people_default.png",
+      "png128": "icons/png/128/people_default.png",
+      "png256": "icons/png/256/people_default.png"
+    },
+    "utensils_default": {
+      "svg": "icons/svg/default/utensils.svg",
+      "png64": "icons/png/64/utensils_default.png",
+      "png128": "icons/png/128/utensils_default.png",
+      "png256": "icons/png/256/utensils_default.png"
+    },
+    "star_default": {
+      "svg": "icons/svg/default/star.svg",
+      "png64": "icons/png/64/star_default.png",
+      "png128": "icons/png/128/star_default.png",
+      "png256": "icons/png/256/star_default.png"
+    },
+    "heart_default": {
+      "svg": "icons/svg/default/heart.svg",
+      "png64": "icons/png/64/heart_default.png",
+      "png128": "icons/png/128/heart_default.png",
+      "png256": "icons/png/256/heart_default.png"
+    },
+    "plus_default": {
+      "svg": "icons/svg/default/plus.svg",
+      "png64": "icons/png/64/plus_default.png",
+      "png128": "icons/png/128/plus_default.png",
+      "png256": "icons/png/256/plus_default.png"
+    },
+    "minus_default": {
+      "svg": "icons/svg/default/minus.svg",
+      "png64": "icons/png/64/minus_default.png",
+      "png128": "icons/png/128/minus_default.png",
+      "png256": "icons/png/256/minus_default.png"
+    },
+    "edit_default": {
+      "svg": "icons/svg/default/edit.svg",
+      "png64": "icons/png/64/edit_default.png",
+      "png128": "icons/png/128/edit_default.png",
+      "png256": "icons/png/256/edit_default.png"
+    },
+    "back_default": {
+      "svg": "icons/svg/default/back.svg",
+      "png64": "icons/png/64/back_default.png",
+      "png128": "icons/png/128/back_default.png",
+      "png256": "icons/png/256/back_default.png"
+    },
+    "more_default": {
+      "svg": "icons/svg/default/more.svg",
+      "png64": "icons/png/64/more_default.png",
+      "png128": "icons/png/128/more_default.png",
+      "png256": "icons/png/256/more_default.png"
+    },
+    "check_default": {
+      "svg": "icons/svg/default/check.svg",
+      "png64": "icons/png/64/check_default.png",
+      "png128": "icons/png/128/check_default.png",
+      "png256": "icons/png/256/check_default.png"
+    },
+    "camera_default": {
+      "svg": "icons/svg/default/camera.svg",
+      "png64": "icons/png/64/camera_default.png",
+      "png128": "icons/png/128/camera_default.png",
+      "png256": "icons/png/256/camera_default.png"
+    },
+    "close_default": {
+      "svg": "icons/svg/default/close.svg",
+      "png64": "icons/png/64/close_default.png",
+      "png128": "icons/png/128/close_default.png",
+      "png256": "icons/png/256/close_default.png"
+    },
+    "upload_default": {
+      "svg": "icons/svg/default/upload.svg",
+      "png64": "icons/png/64/upload_default.png",
+      "png128": "icons/png/128/upload_default.png",
+      "png256": "icons/png/256/upload_default.png"
+    },
+    "fire_default": {
+      "svg": "icons/svg/default/fire.svg",
+      "png64": "icons/png/64/fire_default.png",
+      "png128": "icons/png/128/fire_default.png",
+      "png256": "icons/png/256/fire_default.png"
+    },
+    "timer_default": {
+      "svg": "icons/svg/default/timer.svg",
+      "png64": "icons/png/64/timer_default.png",
+      "png128": "icons/png/128/timer_default.png",
+      "png256": "icons/png/256/timer_default.png"
+    },
+    "note_default": {
+      "svg": "icons/svg/default/note.svg",
+      "png64": "icons/png/64/note_default.png",
+      "png128": "icons/png/128/note_default.png",
+      "png256": "icons/png/256/note_default.png"
+    },
+    "history_default": {
+      "svg": "icons/svg/default/history.svg",
+      "png64": "icons/png/64/history_default.png",
+      "png128": "icons/png/128/history_default.png",
+      "png256": "icons/png/256/history_default.png"
+    },
+    "bell_default": {
+      "svg": "icons/svg/default/bell.svg",
+      "png64": "icons/png/64/bell_default.png",
+      "png128": "icons/png/128/bell_default.png",
+      "png256": "icons/png/256/bell_default.png"
+    },
+    "settings_default": {
+      "svg": "icons/svg/default/settings.svg",
+      "png64": "icons/png/64/settings_default.png",
+      "png128": "icons/png/128/settings_default.png",
+      "png256": "icons/png/256/settings_default.png"
+    },
+    "database_default": {
+      "svg": "icons/svg/default/database.svg",
+      "png64": "icons/png/64/database_default.png",
+      "png128": "icons/png/128/database_default.png",
+      "png256": "icons/png/256/database_default.png"
+    },
+    "help_default": {
+      "svg": "icons/svg/default/help.svg",
+      "png64": "icons/png/64/help_default.png",
+      "png128": "icons/png/128/help_default.png",
+      "png256": "icons/png/256/help_default.png"
+    },
+    "filter_default": {
+      "svg": "icons/svg/default/filter.svg",
+      "png64": "icons/png/64/filter_default.png",
+      "png128": "icons/png/128/filter_default.png",
+      "png256": "icons/png/256/filter_default.png"
+    },
+    "drag_default": {
+      "svg": "icons/svg/default/drag.svg",
+      "png64": "icons/png/64/drag_default.png",
+      "png128": "icons/png/128/drag_default.png",
+      "png256": "icons/png/256/drag_default.png"
+    },
+    "arrow_right_default": {
+      "svg": "icons/svg/default/arrow_right.svg",
+      "png64": "icons/png/64/arrow_right_default.png",
+      "png128": "icons/png/128/arrow_right_default.png",
+      "png256": "icons/png/256/arrow_right_default.png"
+    },
+    "chef_hat_default": {
+      "svg": "icons/svg/default/chef_hat.svg",
+      "png64": "icons/png/64/chef_hat_default.png",
+      "png128": "icons/png/128/chef_hat_default.png",
+      "png256": "icons/png/256/chef_hat_default.png"
+    },
+    "knife_default": {
+      "svg": "icons/svg/default/knife.svg",
+      "png64": "icons/png/64/knife_default.png",
+      "png128": "icons/png/128/knife_default.png",
+      "png256": "icons/png/256/knife_default.png"
+    },
+    "sparkle_default": {
+      "svg": "icons/svg/default/sparkle.svg",
+      "png64": "icons/png/64/sparkle_default.png",
+      "png128": "icons/png/128/sparkle_default.png",
+      "png256": "icons/png/256/sparkle_default.png"
+    },
+    "warning_default": {
+      "svg": "icons/svg/default/warning.svg",
+      "png64": "icons/png/64/warning_default.png",
+      "png128": "icons/png/128/warning_default.png",
+      "png256": "icons/png/256/warning_default.png"
+    },
+    "soup_default": {
+      "svg": "icons/svg/default/soup.svg",
+      "png64": "icons/png/64/soup_default.png",
+      "png128": "icons/png/128/soup_default.png",
+      "png256": "icons/png/256/soup_default.png"
+    },
+    "meat_default": {
+      "svg": "icons/svg/default/meat.svg",
+      "png64": "icons/png/64/meat_default.png",
+      "png128": "icons/png/128/meat_default.png",
+      "png256": "icons/png/256/meat_default.png"
+    },
+    "egg_default": {
+      "svg": "icons/svg/default/egg.svg",
+      "png64": "icons/png/64/egg_default.png",
+      "png128": "icons/png/128/egg_default.png",
+      "png256": "icons/png/256/egg_default.png"
+    },
+    "tomato_default": {
+      "svg": "icons/svg/default/tomato.svg",
+      "png64": "icons/png/64/tomato_default.png",
+      "png128": "icons/png/128/tomato_default.png",
+      "png256": "icons/png/256/tomato_default.png"
+    },
+    "chili_default": {
+      "svg": "icons/svg/default/chili.svg",
+      "png64": "icons/png/64/chili_default.png",
+      "png128": "icons/png/128/chili_default.png",
+      "png256": "icons/png/256/chili_default.png"
+    },
+    "potato_default": {
+      "svg": "icons/svg/default/potato.svg",
+      "png64": "icons/png/64/potato_default.png",
+      "png128": "icons/png/128/potato_default.png",
+      "png256": "icons/png/256/potato_default.png"
+    },
+    "sauce_default": {
+      "svg": "icons/svg/default/sauce.svg",
+      "png64": "icons/png/64/sauce_default.png",
+      "png128": "icons/png/128/sauce_default.png",
+      "png256": "icons/png/256/sauce_default.png"
+    },
+    "pan_default": {
+      "svg": "icons/svg/default/pan.svg",
+      "png64": "icons/png/64/pan_default.png",
+      "png128": "icons/png/128/pan_default.png",
+      "png256": "icons/png/256/pan_default.png"
+    },
+    "tab_home_active": {
+      "svg": "icons/svg/active/home.svg",
+      "png64": "icons/png/64/tab_home_active.png",
+      "png128": "icons/png/128/tab_home_active.png",
+      "png256": "icons/png/256/tab_home_active.png"
+    },
+    "tab_dish_book_active": {
+      "svg": "icons/svg/active/dish_book.svg",
+      "png64": "icons/png/64/tab_dish_book_active.png",
+      "png128": "icons/png/128/tab_dish_book_active.png",
+      "png256": "icons/png/256/tab_dish_book_active.png"
+    },
+    "tab_menu_clipboard_active": {
+      "svg": "icons/svg/active/menu_clipboard.svg",
+      "png64": "icons/png/64/tab_menu_clipboard_active.png",
+      "png128": "icons/png/128/tab_menu_clipboard_active.png",
+      "png256": "icons/png/256/tab_menu_clipboard_active.png"
+    },
+    "tab_cook_pot_active": {
+      "svg": "icons/svg/active/cook_pot.svg",
+      "png64": "icons/png/64/tab_cook_pot_active.png",
+      "png128": "icons/png/128/tab_cook_pot_active.png",
+      "png256": "icons/png/256/tab_cook_pot_active.png"
+    },
+    "tab_mine_user_active": {
+      "svg": "icons/svg/active/mine_user.svg",
+      "png64": "icons/png/64/tab_mine_user_active.png",
+      "png128": "icons/png/128/tab_mine_user_active.png",
+      "png256": "icons/png/256/tab_mine_user_active.png"
+    },
+    "search_active": {
+      "svg": "icons/svg/active/search.svg",
+      "png64": "icons/png/64/search_active.png",
+      "png128": "icons/png/128/search_active.png",
+      "png256": "icons/png/256/search_active.png"
+    },
+    "calendar_active": {
+      "svg": "icons/svg/active/calendar.svg",
+      "png64": "icons/png/64/calendar_active.png",
+      "png128": "icons/png/128/calendar_active.png",
+      "png256": "icons/png/256/calendar_active.png"
+    },
+    "clock_active": {
+      "svg": "icons/svg/active/clock.svg",
+      "png64": "icons/png/64/clock_active.png",
+      "png128": "icons/png/128/clock_active.png",
+      "png256": "icons/png/256/clock_active.png"
+    },
+    "people_active": {
+      "svg": "icons/svg/active/people.svg",
+      "png64": "icons/png/64/people_active.png",
+      "png128": "icons/png/128/people_active.png",
+      "png256": "icons/png/256/people_active.png"
+    },
+    "utensils_active": {
+      "svg": "icons/svg/active/utensils.svg",
+      "png64": "icons/png/64/utensils_active.png",
+      "png128": "icons/png/128/utensils_active.png",
+      "png256": "icons/png/256/utensils_active.png"
+    },
+    "star_active": {
+      "svg": "icons/svg/active/star.svg",
+      "png64": "icons/png/64/star_active.png",
+      "png128": "icons/png/128/star_active.png",
+      "png256": "icons/png/256/star_active.png"
+    },
+    "heart_active": {
+      "svg": "icons/svg/active/heart.svg",
+      "png64": "icons/png/64/heart_active.png",
+      "png128": "icons/png/128/heart_active.png",
+      "png256": "icons/png/256/heart_active.png"
+    },
+    "plus_active": {
+      "svg": "icons/svg/active/plus.svg",
+      "png64": "icons/png/64/plus_active.png",
+      "png128": "icons/png/128/plus_active.png",
+      "png256": "icons/png/256/plus_active.png"
+    },
+    "minus_active": {
+      "svg": "icons/svg/active/minus.svg",
+      "png64": "icons/png/64/minus_active.png",
+      "png128": "icons/png/128/minus_active.png",
+      "png256": "icons/png/256/minus_active.png"
+    },
+    "edit_active": {
+      "svg": "icons/svg/active/edit.svg",
+      "png64": "icons/png/64/edit_active.png",
+      "png128": "icons/png/128/edit_active.png",
+      "png256": "icons/png/256/edit_active.png"
+    },
+    "back_active": {
+      "svg": "icons/svg/active/back.svg",
+      "png64": "icons/png/64/back_active.png",
+      "png128": "icons/png/128/back_active.png",
+      "png256": "icons/png/256/back_active.png"
+    },
+    "more_active": {
+      "svg": "icons/svg/active/more.svg",
+      "png64": "icons/png/64/more_active.png",
+      "png128": "icons/png/128/more_active.png",
+      "png256": "icons/png/256/more_active.png"
+    },
+    "check_active": {
+      "svg": "icons/svg/active/check.svg",
+      "png64": "icons/png/64/check_active.png",
+      "png128": "icons/png/128/check_active.png",
+      "png256": "icons/png/256/check_active.png"
+    },
+    "camera_active": {
+      "svg": "icons/svg/active/camera.svg",
+      "png64": "icons/png/64/camera_active.png",
+      "png128": "icons/png/128/camera_active.png",
+      "png256": "icons/png/256/camera_active.png"
+    },
+    "close_active": {
+      "svg": "icons/svg/active/close.svg",
+      "png64": "icons/png/64/close_active.png",
+      "png128": "icons/png/128/close_active.png",
+      "png256": "icons/png/256/close_active.png"
+    },
+    "upload_active": {
+      "svg": "icons/svg/active/upload.svg",
+      "png64": "icons/png/64/upload_active.png",
+      "png128": "icons/png/128/upload_active.png",
+      "png256": "icons/png/256/upload_active.png"
+    },
+    "fire_active": {
+      "svg": "icons/svg/active/fire.svg",
+      "png64": "icons/png/64/fire_active.png",
+      "png128": "icons/png/128/fire_active.png",
+      "png256": "icons/png/256/fire_active.png"
+    },
+    "timer_active": {
+      "svg": "icons/svg/active/timer.svg",
+      "png64": "icons/png/64/timer_active.png",
+      "png128": "icons/png/128/timer_active.png",
+      "png256": "icons/png/256/timer_active.png"
+    },
+    "note_active": {
+      "svg": "icons/svg/active/note.svg",
+      "png64": "icons/png/64/note_active.png",
+      "png128": "icons/png/128/note_active.png",
+      "png256": "icons/png/256/note_active.png"
+    },
+    "history_active": {
+      "svg": "icons/svg/active/history.svg",
+      "png64": "icons/png/64/history_active.png",
+      "png128": "icons/png/128/history_active.png",
+      "png256": "icons/png/256/history_active.png"
+    },
+    "bell_active": {
+      "svg": "icons/svg/active/bell.svg",
+      "png64": "icons/png/64/bell_active.png",
+      "png128": "icons/png/128/bell_active.png",
+      "png256": "icons/png/256/bell_active.png"
+    },
+    "settings_active": {
+      "svg": "icons/svg/active/settings.svg",
+      "png64": "icons/png/64/settings_active.png",
+      "png128": "icons/png/128/settings_active.png",
+      "png256": "icons/png/256/settings_active.png"
+    },
+    "database_active": {
+      "svg": "icons/svg/active/database.svg",
+      "png64": "icons/png/64/database_active.png",
+      "png128": "icons/png/128/database_active.png",
+      "png256": "icons/png/256/database_active.png"
+    },
+    "help_active": {
+      "svg": "icons/svg/active/help.svg",
+      "png64": "icons/png/64/help_active.png",
+      "png128": "icons/png/128/help_active.png",
+      "png256": "icons/png/256/help_active.png"
+    },
+    "filter_active": {
+      "svg": "icons/svg/active/filter.svg",
+      "png64": "icons/png/64/filter_active.png",
+      "png128": "icons/png/128/filter_active.png",
+      "png256": "icons/png/256/filter_active.png"
+    },
+    "drag_active": {
+      "svg": "icons/svg/active/drag.svg",
+      "png64": "icons/png/64/drag_active.png",
+      "png128": "icons/png/128/drag_active.png",
+      "png256": "icons/png/256/drag_active.png"
+    },
+    "arrow_right_active": {
+      "svg": "icons/svg/active/arrow_right.svg",
+      "png64": "icons/png/64/arrow_right_active.png",
+      "png128": "icons/png/128/arrow_right_active.png",
+      "png256": "icons/png/256/arrow_right_active.png"
+    },
+    "chef_hat_active": {
+      "svg": "icons/svg/active/chef_hat.svg",
+      "png64": "icons/png/64/chef_hat_active.png",
+      "png128": "icons/png/128/chef_hat_active.png",
+      "png256": "icons/png/256/chef_hat_active.png"
+    },
+    "knife_active": {
+      "svg": "icons/svg/active/knife.svg",
+      "png64": "icons/png/64/knife_active.png",
+      "png128": "icons/png/128/knife_active.png",
+      "png256": "icons/png/256/knife_active.png"
+    },
+    "sparkle_active": {
+      "svg": "icons/svg/active/sparkle.svg",
+      "png64": "icons/png/64/sparkle_active.png",
+      "png128": "icons/png/128/sparkle_active.png",
+      "png256": "icons/png/256/sparkle_active.png"
+    },
+    "warning_active": {
+      "svg": "icons/svg/active/warning.svg",
+      "png64": "icons/png/64/warning_active.png",
+      "png128": "icons/png/128/warning_active.png",
+      "png256": "icons/png/256/warning_active.png"
+    },
+    "soup_active": {
+      "svg": "icons/svg/active/soup.svg",
+      "png64": "icons/png/64/soup_active.png",
+      "png128": "icons/png/128/soup_active.png",
+      "png256": "icons/png/256/soup_active.png"
+    },
+    "meat_active": {
+      "svg": "icons/svg/active/meat.svg",
+      "png64": "icons/png/64/meat_active.png",
+      "png128": "icons/png/128/meat_active.png",
+      "png256": "icons/png/256/meat_active.png"
+    },
+    "egg_active": {
+      "svg": "icons/svg/active/egg.svg",
+      "png64": "icons/png/64/egg_active.png",
+      "png128": "icons/png/128/egg_active.png",
+      "png256": "icons/png/256/egg_active.png"
+    },
+    "tomato_active": {
+      "svg": "icons/svg/active/tomato.svg",
+      "png64": "icons/png/64/tomato_active.png",
+      "png128": "icons/png/128/tomato_active.png",
+      "png256": "icons/png/256/tomato_active.png"
+    },
+    "chili_active": {
+      "svg": "icons/svg/active/chili.svg",
+      "png64": "icons/png/64/chili_active.png",
+      "png128": "icons/png/128/chili_active.png",
+      "png256": "icons/png/256/chili_active.png"
+    },
+    "potato_active": {
+      "svg": "icons/svg/active/potato.svg",
+      "png64": "icons/png/64/potato_active.png",
+      "png128": "icons/png/128/potato_active.png",
+      "png256": "icons/png/256/potato_active.png"
+    },
+    "sauce_active": {
+      "svg": "icons/svg/active/sauce.svg",
+      "png64": "icons/png/64/sauce_active.png",
+      "png128": "icons/png/128/sauce_active.png",
+      "png256": "icons/png/256/sauce_active.png"
+    },
+    "pan_active": {
+      "svg": "icons/svg/active/pan.svg",
+      "png64": "icons/png/64/pan_active.png",
+      "png128": "icons/png/128/pan_active.png",
+      "png256": "icons/png/256/pan_active.png"
+    },
+    "home_orange": {
+      "svg": "icons/svg/orange/home.svg",
+      "png64": "icons/png/64/home_orange.png",
+      "png128": "icons/png/128/home_orange.png",
+      "png256": "icons/png/256/home_orange.png"
+    },
+    "dish_book_orange": {
+      "svg": "icons/svg/orange/dish_book.svg",
+      "png64": "icons/png/64/dish_book_orange.png",
+      "png128": "icons/png/128/dish_book_orange.png",
+      "png256": "icons/png/256/dish_book_orange.png"
+    },
+    "menu_clipboard_orange": {
+      "svg": "icons/svg/orange/menu_clipboard.svg",
+      "png64": "icons/png/64/menu_clipboard_orange.png",
+      "png128": "icons/png/128/menu_clipboard_orange.png",
+      "png256": "icons/png/256/menu_clipboard_orange.png"
+    },
+    "cook_pot_orange": {
+      "svg": "icons/svg/orange/cook_pot.svg",
+      "png64": "icons/png/64/cook_pot_orange.png",
+      "png128": "icons/png/128/cook_pot_orange.png",
+      "png256": "icons/png/256/cook_pot_orange.png"
+    },
+    "mine_user_orange": {
+      "svg": "icons/svg/orange/mine_user.svg",
+      "png64": "icons/png/64/mine_user_orange.png",
+      "png128": "icons/png/128/mine_user_orange.png",
+      "png256": "icons/png/256/mine_user_orange.png"
+    },
+    "search_orange": {
+      "svg": "icons/svg/orange/search.svg",
+      "png64": "icons/png/64/search_orange.png",
+      "png128": "icons/png/128/search_orange.png",
+      "png256": "icons/png/256/search_orange.png"
+    },
+    "calendar_orange": {
+      "svg": "icons/svg/orange/calendar.svg",
+      "png64": "icons/png/64/calendar_orange.png",
+      "png128": "icons/png/128/calendar_orange.png",
+      "png256": "icons/png/256/calendar_orange.png"
+    },
+    "clock_orange": {
+      "svg": "icons/svg/orange/clock.svg",
+      "png64": "icons/png/64/clock_orange.png",
+      "png128": "icons/png/128/clock_orange.png",
+      "png256": "icons/png/256/clock_orange.png"
+    },
+    "people_orange": {
+      "svg": "icons/svg/orange/people.svg",
+      "png64": "icons/png/64/people_orange.png",
+      "png128": "icons/png/128/people_orange.png",
+      "png256": "icons/png/256/people_orange.png"
+    },
+    "utensils_orange": {
+      "svg": "icons/svg/orange/utensils.svg",
+      "png64": "icons/png/64/utensils_orange.png",
+      "png128": "icons/png/128/utensils_orange.png",
+      "png256": "icons/png/256/utensils_orange.png"
+    },
+    "star_orange": {
+      "svg": "icons/svg/orange/star.svg",
+      "png64": "icons/png/64/star_orange.png",
+      "png128": "icons/png/128/star_orange.png",
+      "png256": "icons/png/256/star_orange.png"
+    },
+    "heart_orange": {
+      "svg": "icons/svg/orange/heart.svg",
+      "png64": "icons/png/64/heart_orange.png",
+      "png128": "icons/png/128/heart_orange.png",
+      "png256": "icons/png/256/heart_orange.png"
+    },
+    "plus_orange": {
+      "svg": "icons/svg/orange/plus.svg",
+      "png64": "icons/png/64/plus_orange.png",
+      "png128": "icons/png/128/plus_orange.png",
+      "png256": "icons/png/256/plus_orange.png"
+    },
+    "minus_orange": {
+      "svg": "icons/svg/orange/minus.svg",
+      "png64": "icons/png/64/minus_orange.png",
+      "png128": "icons/png/128/minus_orange.png",
+      "png256": "icons/png/256/minus_orange.png"
+    },
+    "edit_orange": {
+      "svg": "icons/svg/orange/edit.svg",
+      "png64": "icons/png/64/edit_orange.png",
+      "png128": "icons/png/128/edit_orange.png",
+      "png256": "icons/png/256/edit_orange.png"
+    },
+    "back_orange": {
+      "svg": "icons/svg/orange/back.svg",
+      "png64": "icons/png/64/back_orange.png",
+      "png128": "icons/png/128/back_orange.png",
+      "png256": "icons/png/256/back_orange.png"
+    },
+    "more_orange": {
+      "svg": "icons/svg/orange/more.svg",
+      "png64": "icons/png/64/more_orange.png",
+      "png128": "icons/png/128/more_orange.png",
+      "png256": "icons/png/256/more_orange.png"
+    },
+    "check_orange": {
+      "svg": "icons/svg/orange/check.svg",
+      "png64": "icons/png/64/check_orange.png",
+      "png128": "icons/png/128/check_orange.png",
+      "png256": "icons/png/256/check_orange.png"
+    },
+    "camera_orange": {
+      "svg": "icons/svg/orange/camera.svg",
+      "png64": "icons/png/64/camera_orange.png",
+      "png128": "icons/png/128/camera_orange.png",
+      "png256": "icons/png/256/camera_orange.png"
+    },
+    "close_orange": {
+      "svg": "icons/svg/orange/close.svg",
+      "png64": "icons/png/64/close_orange.png",
+      "png128": "icons/png/128/close_orange.png",
+      "png256": "icons/png/256/close_orange.png"
+    },
+    "upload_orange": {
+      "svg": "icons/svg/orange/upload.svg",
+      "png64": "icons/png/64/upload_orange.png",
+      "png128": "icons/png/128/upload_orange.png",
+      "png256": "icons/png/256/upload_orange.png"
+    },
+    "fire_orange": {
+      "svg": "icons/svg/orange/fire.svg",
+      "png64": "icons/png/64/fire_orange.png",
+      "png128": "icons/png/128/fire_orange.png",
+      "png256": "icons/png/256/fire_orange.png"
+    },
+    "timer_orange": {
+      "svg": "icons/svg/orange/timer.svg",
+      "png64": "icons/png/64/timer_orange.png",
+      "png128": "icons/png/128/timer_orange.png",
+      "png256": "icons/png/256/timer_orange.png"
+    },
+    "note_orange": {
+      "svg": "icons/svg/orange/note.svg",
+      "png64": "icons/png/64/note_orange.png",
+      "png128": "icons/png/128/note_orange.png",
+      "png256": "icons/png/256/note_orange.png"
+    },
+    "history_orange": {
+      "svg": "icons/svg/orange/history.svg",
+      "png64": "icons/png/64/history_orange.png",
+      "png128": "icons/png/128/history_orange.png",
+      "png256": "icons/png/256/history_orange.png"
+    },
+    "bell_orange": {
+      "svg": "icons/svg/orange/bell.svg",
+      "png64": "icons/png/64/bell_orange.png",
+      "png128": "icons/png/128/bell_orange.png",
+      "png256": "icons/png/256/bell_orange.png"
+    },
+    "settings_orange": {
+      "svg": "icons/svg/orange/settings.svg",
+      "png64": "icons/png/64/settings_orange.png",
+      "png128": "icons/png/128/settings_orange.png",
+      "png256": "icons/png/256/settings_orange.png"
+    },
+    "database_orange": {
+      "svg": "icons/svg/orange/database.svg",
+      "png64": "icons/png/64/database_orange.png",
+      "png128": "icons/png/128/database_orange.png",
+      "png256": "icons/png/256/database_orange.png"
+    },
+    "help_orange": {
+      "svg": "icons/svg/orange/help.svg",
+      "png64": "icons/png/64/help_orange.png",
+      "png128": "icons/png/128/help_orange.png",
+      "png256": "icons/png/256/help_orange.png"
+    },
+    "filter_orange": {
+      "svg": "icons/svg/orange/filter.svg",
+      "png64": "icons/png/64/filter_orange.png",
+      "png128": "icons/png/128/filter_orange.png",
+      "png256": "icons/png/256/filter_orange.png"
+    },
+    "drag_orange": {
+      "svg": "icons/svg/orange/drag.svg",
+      "png64": "icons/png/64/drag_orange.png",
+      "png128": "icons/png/128/drag_orange.png",
+      "png256": "icons/png/256/drag_orange.png"
+    },
+    "arrow_right_orange": {
+      "svg": "icons/svg/orange/arrow_right.svg",
+      "png64": "icons/png/64/arrow_right_orange.png",
+      "png128": "icons/png/128/arrow_right_orange.png",
+      "png256": "icons/png/256/arrow_right_orange.png"
+    },
+    "chef_hat_orange": {
+      "svg": "icons/svg/orange/chef_hat.svg",
+      "png64": "icons/png/64/chef_hat_orange.png",
+      "png128": "icons/png/128/chef_hat_orange.png",
+      "png256": "icons/png/256/chef_hat_orange.png"
+    },
+    "knife_orange": {
+      "svg": "icons/svg/orange/knife.svg",
+      "png64": "icons/png/64/knife_orange.png",
+      "png128": "icons/png/128/knife_orange.png",
+      "png256": "icons/png/256/knife_orange.png"
+    },
+    "sparkle_orange": {
+      "svg": "icons/svg/orange/sparkle.svg",
+      "png64": "icons/png/64/sparkle_orange.png",
+      "png128": "icons/png/128/sparkle_orange.png",
+      "png256": "icons/png/256/sparkle_orange.png"
+    },
+    "warning_orange": {
+      "svg": "icons/svg/orange/warning.svg",
+      "png64": "icons/png/64/warning_orange.png",
+      "png128": "icons/png/128/warning_orange.png",
+      "png256": "icons/png/256/warning_orange.png"
+    },
+    "soup_orange": {
+      "svg": "icons/svg/orange/soup.svg",
+      "png64": "icons/png/64/soup_orange.png",
+      "png128": "icons/png/128/soup_orange.png",
+      "png256": "icons/png/256/soup_orange.png"
+    },
+    "meat_orange": {
+      "svg": "icons/svg/orange/meat.svg",
+      "png64": "icons/png/64/meat_orange.png",
+      "png128": "icons/png/128/meat_orange.png",
+      "png256": "icons/png/256/meat_orange.png"
+    },
+    "egg_orange": {
+      "svg": "icons/svg/orange/egg.svg",
+      "png64": "icons/png/64/egg_orange.png",
+      "png128": "icons/png/128/egg_orange.png",
+      "png256": "icons/png/256/egg_orange.png"
+    },
+    "tomato_orange": {
+      "svg": "icons/svg/orange/tomato.svg",
+      "png64": "icons/png/64/tomato_orange.png",
+      "png128": "icons/png/128/tomato_orange.png",
+      "png256": "icons/png/256/tomato_orange.png"
+    },
+    "chili_orange": {
+      "svg": "icons/svg/orange/chili.svg",
+      "png64": "icons/png/64/chili_orange.png",
+      "png128": "icons/png/128/chili_orange.png",
+      "png256": "icons/png/256/chili_orange.png"
+    },
+    "potato_orange": {
+      "svg": "icons/svg/orange/potato.svg",
+      "png64": "icons/png/64/potato_orange.png",
+      "png128": "icons/png/128/potato_orange.png",
+      "png256": "icons/png/256/potato_orange.png"
+    },
+    "sauce_orange": {
+      "svg": "icons/svg/orange/sauce.svg",
+      "png64": "icons/png/64/sauce_orange.png",
+      "png128": "icons/png/128/sauce_orange.png",
+      "png256": "icons/png/256/sauce_orange.png"
+    },
+    "pan_orange": {
+      "svg": "icons/svg/orange/pan.svg",
+      "png64": "icons/png/64/pan_orange.png",
+      "png128": "icons/png/128/pan_orange.png",
+      "png256": "icons/png/256/pan_orange.png"
+    },
+    "home_green": {
+      "svg": "icons/svg/green/home.svg",
+      "png64": "icons/png/64/home_green.png",
+      "png128": "icons/png/128/home_green.png",
+      "png256": "icons/png/256/home_green.png"
+    },
+    "dish_book_green": {
+      "svg": "icons/svg/green/dish_book.svg",
+      "png64": "icons/png/64/dish_book_green.png",
+      "png128": "icons/png/128/dish_book_green.png",
+      "png256": "icons/png/256/dish_book_green.png"
+    },
+    "menu_clipboard_green": {
+      "svg": "icons/svg/green/menu_clipboard.svg",
+      "png64": "icons/png/64/menu_clipboard_green.png",
+      "png128": "icons/png/128/menu_clipboard_green.png",
+      "png256": "icons/png/256/menu_clipboard_green.png"
+    },
+    "cook_pot_green": {
+      "svg": "icons/svg/green/cook_pot.svg",
+      "png64": "icons/png/64/cook_pot_green.png",
+      "png128": "icons/png/128/cook_pot_green.png",
+      "png256": "icons/png/256/cook_pot_green.png"
+    },
+    "mine_user_green": {
+      "svg": "icons/svg/green/mine_user.svg",
+      "png64": "icons/png/64/mine_user_green.png",
+      "png128": "icons/png/128/mine_user_green.png",
+      "png256": "icons/png/256/mine_user_green.png"
+    },
+    "search_green": {
+      "svg": "icons/svg/green/search.svg",
+      "png64": "icons/png/64/search_green.png",
+      "png128": "icons/png/128/search_green.png",
+      "png256": "icons/png/256/search_green.png"
+    },
+    "calendar_green": {
+      "svg": "icons/svg/green/calendar.svg",
+      "png64": "icons/png/64/calendar_green.png",
+      "png128": "icons/png/128/calendar_green.png",
+      "png256": "icons/png/256/calendar_green.png"
+    },
+    "clock_green": {
+      "svg": "icons/svg/green/clock.svg",
+      "png64": "icons/png/64/clock_green.png",
+      "png128": "icons/png/128/clock_green.png",
+      "png256": "icons/png/256/clock_green.png"
+    },
+    "people_green": {
+      "svg": "icons/svg/green/people.svg",
+      "png64": "icons/png/64/people_green.png",
+      "png128": "icons/png/128/people_green.png",
+      "png256": "icons/png/256/people_green.png"
+    },
+    "utensils_green": {
+      "svg": "icons/svg/green/utensils.svg",
+      "png64": "icons/png/64/utensils_green.png",
+      "png128": "icons/png/128/utensils_green.png",
+      "png256": "icons/png/256/utensils_green.png"
+    },
+    "star_green": {
+      "svg": "icons/svg/green/star.svg",
+      "png64": "icons/png/64/star_green.png",
+      "png128": "icons/png/128/star_green.png",
+      "png256": "icons/png/256/star_green.png"
+    },
+    "heart_green": {
+      "svg": "icons/svg/green/heart.svg",
+      "png64": "icons/png/64/heart_green.png",
+      "png128": "icons/png/128/heart_green.png",
+      "png256": "icons/png/256/heart_green.png"
+    },
+    "plus_green": {
+      "svg": "icons/svg/green/plus.svg",
+      "png64": "icons/png/64/plus_green.png",
+      "png128": "icons/png/128/plus_green.png",
+      "png256": "icons/png/256/plus_green.png"
+    },
+    "minus_green": {
+      "svg": "icons/svg/green/minus.svg",
+      "png64": "icons/png/64/minus_green.png",
+      "png128": "icons/png/128/minus_green.png",
+      "png256": "icons/png/256/minus_green.png"
+    },
+    "edit_green": {
+      "svg": "icons/svg/green/edit.svg",
+      "png64": "icons/png/64/edit_green.png",
+      "png128": "icons/png/128/edit_green.png",
+      "png256": "icons/png/256/edit_green.png"
+    },
+    "back_green": {
+      "svg": "icons/svg/green/back.svg",
+      "png64": "icons/png/64/back_green.png",
+      "png128": "icons/png/128/back_green.png",
+      "png256": "icons/png/256/back_green.png"
+    },
+    "more_green": {
+      "svg": "icons/svg/green/more.svg",
+      "png64": "icons/png/64/more_green.png",
+      "png128": "icons/png/128/more_green.png",
+      "png256": "icons/png/256/more_green.png"
+    },
+    "check_green": {
+      "svg": "icons/svg/green/check.svg",
+      "png64": "icons/png/64/check_green.png",
+      "png128": "icons/png/128/check_green.png",
+      "png256": "icons/png/256/check_green.png"
+    },
+    "camera_green": {
+      "svg": "icons/svg/green/camera.svg",
+      "png64": "icons/png/64/camera_green.png",
+      "png128": "icons/png/128/camera_green.png",
+      "png256": "icons/png/256/camera_green.png"
+    },
+    "close_green": {
+      "svg": "icons/svg/green/close.svg",
+      "png64": "icons/png/64/close_green.png",
+      "png128": "icons/png/128/close_green.png",
+      "png256": "icons/png/256/close_green.png"
+    },
+    "upload_green": {
+      "svg": "icons/svg/green/upload.svg",
+      "png64": "icons/png/64/upload_green.png",
+      "png128": "icons/png/128/upload_green.png",
+      "png256": "icons/png/256/upload_green.png"
+    },
+    "fire_green": {
+      "svg": "icons/svg/green/fire.svg",
+      "png64": "icons/png/64/fire_green.png",
+      "png128": "icons/png/128/fire_green.png",
+      "png256": "icons/png/256/fire_green.png"
+    },
+    "timer_green": {
+      "svg": "icons/svg/green/timer.svg",
+      "png64": "icons/png/64/timer_green.png",
+      "png128": "icons/png/128/timer_green.png",
+      "png256": "icons/png/256/timer_green.png"
+    },
+    "note_green": {
+      "svg": "icons/svg/green/note.svg",
+      "png64": "icons/png/64/note_green.png",
+      "png128": "icons/png/128/note_green.png",
+      "png256": "icons/png/256/note_green.png"
+    },
+    "history_green": {
+      "svg": "icons/svg/green/history.svg",
+      "png64": "icons/png/64/history_green.png",
+      "png128": "icons/png/128/history_green.png",
+      "png256": "icons/png/256/history_green.png"
+    },
+    "bell_green": {
+      "svg": "icons/svg/green/bell.svg",
+      "png64": "icons/png/64/bell_green.png",
+      "png128": "icons/png/128/bell_green.png",
+      "png256": "icons/png/256/bell_green.png"
+    },
+    "settings_green": {
+      "svg": "icons/svg/green/settings.svg",
+      "png64": "icons/png/64/settings_green.png",
+      "png128": "icons/png/128/settings_green.png",
+      "png256": "icons/png/256/settings_green.png"
+    },
+    "database_green": {
+      "svg": "icons/svg/green/database.svg",
+      "png64": "icons/png/64/database_green.png",
+      "png128": "icons/png/128/database_green.png",
+      "png256": "icons/png/256/database_green.png"
+    },
+    "help_green": {
+      "svg": "icons/svg/green/help.svg",
+      "png64": "icons/png/64/help_green.png",
+      "png128": "icons/png/128/help_green.png",
+      "png256": "icons/png/256/help_green.png"
+    },
+    "filter_green": {
+      "svg": "icons/svg/green/filter.svg",
+      "png64": "icons/png/64/filter_green.png",
+      "png128": "icons/png/128/filter_green.png",
+      "png256": "icons/png/256/filter_green.png"
+    },
+    "drag_green": {
+      "svg": "icons/svg/green/drag.svg",
+      "png64": "icons/png/64/drag_green.png",
+      "png128": "icons/png/128/drag_green.png",
+      "png256": "icons/png/256/drag_green.png"
+    },
+    "arrow_right_green": {
+      "svg": "icons/svg/green/arrow_right.svg",
+      "png64": "icons/png/64/arrow_right_green.png",
+      "png128": "icons/png/128/arrow_right_green.png",
+      "png256": "icons/png/256/arrow_right_green.png"
+    },
+    "chef_hat_green": {
+      "svg": "icons/svg/green/chef_hat.svg",
+      "png64": "icons/png/64/chef_hat_green.png",
+      "png128": "icons/png/128/chef_hat_green.png",
+      "png256": "icons/png/256/chef_hat_green.png"
+    },
+    "knife_green": {
+      "svg": "icons/svg/green/knife.svg",
+      "png64": "icons/png/64/knife_green.png",
+      "png128": "icons/png/128/knife_green.png",
+      "png256": "icons/png/256/knife_green.png"
+    },
+    "sparkle_green": {
+      "svg": "icons/svg/green/sparkle.svg",
+      "png64": "icons/png/64/sparkle_green.png",
+      "png128": "icons/png/128/sparkle_green.png",
+      "png256": "icons/png/256/sparkle_green.png"
+    },
+    "warning_green": {
+      "svg": "icons/svg/green/warning.svg",
+      "png64": "icons/png/64/warning_green.png",
+      "png128": "icons/png/128/warning_green.png",
+      "png256": "icons/png/256/warning_green.png"
+    },
+    "soup_green": {
+      "svg": "icons/svg/green/soup.svg",
+      "png64": "icons/png/64/soup_green.png",
+      "png128": "icons/png/128/soup_green.png",
+      "png256": "icons/png/256/soup_green.png"
+    },
+    "meat_green": {
+      "svg": "icons/svg/green/meat.svg",
+      "png64": "icons/png/64/meat_green.png",
+      "png128": "icons/png/128/meat_green.png",
+      "png256": "icons/png/256/meat_green.png"
+    },
+    "egg_green": {
+      "svg": "icons/svg/green/egg.svg",
+      "png64": "icons/png/64/egg_green.png",
+      "png128": "icons/png/128/egg_green.png",
+      "png256": "icons/png/256/egg_green.png"
+    },
+    "tomato_green": {
+      "svg": "icons/svg/green/tomato.svg",
+      "png64": "icons/png/64/tomato_green.png",
+      "png128": "icons/png/128/tomato_green.png",
+      "png256": "icons/png/256/tomato_green.png"
+    },
+    "chili_green": {
+      "svg": "icons/svg/green/chili.svg",
+      "png64": "icons/png/64/chili_green.png",
+      "png128": "icons/png/128/chili_green.png",
+      "png256": "icons/png/256/chili_green.png"
+    },
+    "potato_green": {
+      "svg": "icons/svg/green/potato.svg",
+      "png64": "icons/png/64/potato_green.png",
+      "png128": "icons/png/128/potato_green.png",
+      "png256": "icons/png/256/potato_green.png"
+    },
+    "sauce_green": {
+      "svg": "icons/svg/green/sauce.svg",
+      "png64": "icons/png/64/sauce_green.png",
+      "png128": "icons/png/128/sauce_green.png",
+      "png256": "icons/png/256/sauce_green.png"
+    },
+    "pan_green": {
+      "svg": "icons/svg/green/pan.svg",
+      "png64": "icons/png/64/pan_green.png",
+      "png128": "icons/png/128/pan_green.png",
+      "png256": "icons/png/256/pan_green.png"
+    }
+  },
+  "illustrations": [
+    {
+      "key": "app_logo_pot",
+      "png512": "illustrations/png/app_logo_pot.png",
+      "png256": "illustrations/png/app_logo_pot_256.png"
+    },
+    {
+      "key": "pot_heart",
+      "png512": "illustrations/png/pot_heart.png",
+      "png256": "illustrations/png/pot_heart_256.png"
+    },
+    {
+      "key": "vegetable_basket",
+      "png512": "illustrations/png/vegetable_basket.png",
+      "png256": "illustrations/png/vegetable_basket_256.png"
+    },
+    {
+      "key": "cookbook",
+      "png512": "illustrations/png/cookbook.png",
+      "png256": "illustrations/png/cookbook_256.png"
+    },
+    {
+      "key": "frying_pan",
+      "png512": "illustrations/png/frying_pan.png",
+      "png256": "illustrations/png/frying_pan_256.png"
+    },
+    {
+      "key": "timer_clock",
+      "png512": "illustrations/png/timer_clock.png",
+      "png256": "illustrations/png/timer_clock_256.png"
+    },
+    {
+      "key": "chef_avatar",
+      "png512": "illustrations/png/chef_avatar.png",
+      "png256": "illustrations/png/chef_avatar_256.png"
+    },
+    {
+      "key": "empty_dishes",
+      "png512": "illustrations/png/empty_dishes.png",
+      "png256": "illustrations/png/empty_dishes_256.png"
+    },
+    {
+      "key": "upload_placeholder",
+      "png512": "illustrations/png/upload_placeholder.png",
+      "png256": "illustrations/png/upload_placeholder_256.png"
+    }
+  ],
+  "dishes": [
+    {
+      "name": "红烧肉",
+      "key": "hongshaorou",
+      "emoji": "🥩",
+      "card": "dishes/png/card/hongshaorou_card.png",
+      "square": "dishes/png/square/hongshaorou_square.png",
+      "detail": "dishes/png/detail/hongshaorou_detail.png"
+    },
+    {
+      "name": "西红柿炒蛋",
+      "key": "tomato_egg",
+      "emoji": "🍅🍳",
+      "card": "dishes/png/card/tomato_egg_card.png",
+      "square": "dishes/png/square/tomato_egg_square.png",
+      "detail": "dishes/png/detail/tomato_egg_detail.png"
+    },
+    {
+      "name": "紫菜蛋花汤",
+      "key": "seaweed_egg_soup",
+      "emoji": "🥣",
+      "card": "dishes/png/card/seaweed_egg_soup_card.png",
+      "square": "dishes/png/square/seaweed_egg_soup_square.png",
+      "detail": "dishes/png/detail/seaweed_egg_soup_detail.png"
+    },
+    {
+      "name": "青椒土豆丝",
+      "key": "shredded_potato",
+      "emoji": "🥔🌶️",
+      "card": "dishes/png/card/shredded_potato_card.png",
+      "square": "dishes/png/square/shredded_potato_square.png",
+      "detail": "dishes/png/detail/shredded_potato_detail.png"
+    },
+    {
+      "name": "麻婆豆腐",
+      "key": "mapo_tofu",
+      "emoji": "🌶️",
+      "card": "dishes/png/card/mapo_tofu_card.png",
+      "square": "dishes/png/square/mapo_tofu_square.png",
+      "detail": "dishes/png/detail/mapo_tofu_detail.png"
+    },
+    {
+      "name": "西兰花炒牛肉",
+      "key": "broccoli_beef",
+      "emoji": "🥩",
+      "card": "dishes/png/card/broccoli_beef_card.png",
+      "square": "dishes/png/square/broccoli_beef_square.png",
+      "detail": "dishes/png/detail/broccoli_beef_detail.png"
+    }
+  ],
+  "badges": [
+    {
+      "key": "badge_meat",
+      "png": "badges/png/badge_meat.png.png",
+      "icon": "meat"
+    },
+    {
+      "key": "badge_tomato",
+      "png": "badges/png/badge_tomato.png.png",
+      "icon": "tomato"
+    },
+    {
+      "key": "badge_egg",
+      "png": "badges/png/badge_egg.png.png",
+      "icon": "egg"
+    },
+    {
+      "key": "badge_soup",
+      "png": "badges/png/badge_soup.png.png",
+      "icon": "soup"
+    },
+    {
+      "key": "badge_potato",
+      "png": "badges/png/badge_potato.png.png",
+      "icon": "potato"
+    },
+    {
+      "key": "badge_chili",
+      "png": "badges/png/badge_chili.png.png",
+      "icon": "chili"
+    },
+    {
+      "key": "badge_knife",
+      "png": "badges/png/badge_knife.png.png",
+      "icon": "knife"
+    },
+    {
+      "key": "badge_fire",
+      "png": "badges/png/badge_fire.png.png",
+      "icon": "fire"
+    },
+    {
+      "key": "badge_sauce",
+      "png": "badges/png/badge_sauce.png.png",
+      "icon": "sauce"
+    },
+    {
+      "key": "badge_sparkle",
+      "png": "badges/png/badge_sparkle.png.png",
+      "icon": "sparkle"
+    },
+    {
+      "key": "badge_camera",
+      "png": "badges/png/badge_camera.png.png",
+      "icon": "camera"
+    },
+    {
+      "key": "badge_star",
+      "png": "badges/png/badge_star.png.png",
+      "icon": "star"
+    }
+  ],
+  "placeholders": [
+    {
+      "key": "dish_cover_placeholder",
+      "png": "placeholders/png/dish_cover_placeholder.png.png"
+    },
+    {
+      "key": "upload_photo_placeholder",
+      "png": "placeholders/png/upload_photo_placeholder.png.png"
+    },
+    {
+      "key": "empty_recipe_placeholder",
+      "png": "placeholders/png/empty_recipe_placeholder.png.png"
+    }
+  ]
+}

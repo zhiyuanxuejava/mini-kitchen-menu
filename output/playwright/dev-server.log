@@ -1,0 +1,48 @@
+
+> dev:h5:lan
+> uni --host 0.0.0.0 --port 5173
+
+Please note that in running mode, due to log output, sourcemap, and uncompressed source code, the performance and package size are not as good as release mode.
+Vite is compiled on demand, and clicking on an uncompiled page at runtime will compile first and then load, resulting in a slower display, and there is no such problem after release.
+Compiler version: 5.12（vue3）
+Compiling...
+[36m
+  vite v5.2.8[39m[32m dev server running at:
+[39m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://26.74.77.246:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.3.36:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.192.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.96.1:[1m5173[22m/[39m
+
+  [36mready in 98002ms.[39m
+
+[2m下午2:25:14[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/seed.ts[22m
+[2m下午2:30:42[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/seed.ts[22m
+[2m下午2:40:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/home/index.vue?vue&type=style&index=0&scoped=2c5296db&lang.scss[22m
+[2m下午2:47:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/home/index.vue, /src/pages/login/index.vue, /src/pages/dish-detail/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/cook-step/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/mine/index.vue[22m
+[2m下午2:47:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dish-detail/index.vue[22m
+[2m下午2:47:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue[22m
+[2m下午2:48:52[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/seed.ts[22m
+[2m下午2:57:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/home/index.vue, /src/pages/login/index.vue, /src/pages/dish-detail/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/cook-step/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/mine/index.vue[22m
+[2m下午2:57:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue[22m
+[2m下午2:58:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dish-detail/index.vue[22m
+[2m下午2:59:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/home/index.vue, /src/pages/login/index.vue, /src/pages/dish-detail/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/cook-step/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/mine/index.vue[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/home/index.vue, /src/pages/login/index.vue, /src/pages/dish-detail/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/cook-step/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/mine/index.vue[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/theme.scss[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dish-detail/index.vue[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppPage.vue?vue&type=style&index=0&scoped=30d3c9d3&lang.scss, /src/components/AppPage.vue[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/menu/index.vue?vue&type=style&index=0&scoped=1d0bddf6&lang.scss[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/rating/index.vue?vue&type=style&index=0&scoped=b92ae595&lang.scss[22m
+[2m下午3:43:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BottomTabbar.vue?vue&type=style&index=0&scoped=8e113fb4&lang.scss[22m
+[2m下午3:56:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppNavbar.vue?vue&type=style&index=0&scoped=2694e7c3&lang.scss[22m
+[2m下午3:56:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/RatingRow.vue?vue&type=style&index=0&scoped=48444459&lang.scss[22m
+[2m下午3:56:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/rating/index.vue?vue&type=style&index=0&scoped=b92ae595&lang.scss[22m
+[2m下午3:59:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/RatingRow.vue?vue&type=style&index=0&scoped=48444459&lang.scss[22m
+[2m下午4:03:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.vue, /src/pages/dishes/index.vue, /src/pages/home/index.vue, /src/pages/login/index.vue, /src/pages/dish-detail/index.vue, /src/pages/menu/index.vue, /src/pages/cook/index.vue, /src/pages/cook-step/index.vue, /src/pages/upload/index.vue, /src/pages/rating/index.vue, /src/pages/mine/index.vue[22m
+[2m下午4:04:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dishes/index.vue[22m
+[2m下午4:04:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/DishCard.vue?vue&type=style&index=0&scoped=e9df36b3&lang.scss[22m
+[2m下午4:04:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/dish-detail/index.vue[22m
+[2m下午4:06:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/AppPage.vue[22m

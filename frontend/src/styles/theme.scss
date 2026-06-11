@@ -1,0 +1,130 @@
+@import '../uni.scss';
+
+.safe-page {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  overflow-x: hidden;
+  padding: 76rpx 28rpx calc(184rpx + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255, 138, 42, 0.16), transparent 210rpx),
+    linear-gradient(180deg, #fffdfb 0%, #fffaf5 100%);
+}
+
+@media (min-width: 431px) {
+  .safe-page {
+    box-shadow: 0 0 44px rgba(54, 32, 17, 0.08);
+  }
+}
+
+.safe-page.no-tab {
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.title-xl {
+  font-size: 54rpx;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: $text-main;
+}
+
+.title-xl .accent {
+  color: $primary;
+}
+
+.card {
+  border: 1rpx solid $border;
+  border-radius: 28rpx;
+  background: $card-bg;
+  box-shadow: $shadow-soft;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: $primary-light;
+  color: $primary;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.pill.green {
+  background: $success-light;
+  color: $success;
+}
+
+.primary-btn,
+.ghost-btn {
+  min-width: 0;
+  height: 78rpx;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, $primary-2 0%, $primary 100%);
+  box-shadow: 0 12rpx 22rpx rgba(255, 106, 26, 0.2);
+}
+
+.ghost-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid $primary;
+  color: $primary;
+  background: #fff;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  color: $text-sub;
+  font-size: 25rpx;
+}
+
+.icon-36 {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.search-box {
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid #e7dfda;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.9);
+  color: #a39a93;
+  font-size: 28rpx;
+}
+
+.line-clamp-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

@@ -1,0 +1,18 @@
+- generic [ref=e7]:
+  - generic:
+    - generic: 9:41
+  - generic [ref=e8]:
+    - generic [ref=e11]: 掌勺点菜
+    - generic [ref=e12]: 把想吃、会做、做得怎样串成一张家常菜单
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15] [cursor=pointer]: 邮箱登录
+      - generic [ref=e16] [cursor=pointer]: 注册账号
+    - generic [ref=e17]:
+      - generic [ref=e18]: 邮箱
+      - textbox [ref=e21]: demo@kitchen.local
+    - generic [ref=e22]:
+      - generic [ref=e23]: 密码
+      - textbox [ref=e26]: "123456"
+    - generic [ref=e27] [cursor=pointer]: 登录并进入厨房
+    - generic [ref=e31] [cursor=pointer]: 微信一键登录

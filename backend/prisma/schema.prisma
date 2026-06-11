@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  nickname     String
+  avatarUrl    String?
+  email        String?      @unique
+  passwordHash String?
+  wechatOpenId String?      @unique
+  role         String       @default("user")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  dishes       Dish[]       @relation("DishOwner")
+  menus        Menu[]
+  cookRecords  CookRecord[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  dishes    Dish[]
+}
+
+model Dish {
+  id               String           @id @default(cuid())
+  ownerUserId      String?          @map("userId")
+  name             String
+  category         String
+  coverImage       String
+  description      String
+  difficulty       String
+  estimatedMinutes Int
+  servings         Int
+  tasteTags        String
+  isFavorite       Boolean          @default(false)
+  sourceType       String           @default("user_created")
+  sourceName       String?
+  sourceUrl        String?
+  sourceLicense    String?
+  syncKey          String?          @unique
+  status           String           @default("published")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  owner            User?            @relation("DishOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  categoryRef      Category?        @relation(fields: [category], references: [code])
+  ingredients      DishIngredient[]
+  steps            DishStep[]
+  menuItems        MenuItem[]
+  cookRecords      CookRecord[]
+
+  @@index([ownerUserId])
+  @@index([sourceType])
+  @@index([category])
+}
+
+model DishIngredient {
+  id        String @id @default(cuid())
+  dishId    String
+  groupType String
+  name      String
+  amount    String
+  sortOrder Int
+  dish      Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+}
+
+model DishStep {
+  id          String @id @default(cuid())
+  dishId      String
+  stepNo      Int
+  title       String
+  description String
+  image       String?
+  heat        String
+  minutes     Int
+  tips        String
+  dish        Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+}
+
+model Menu {
+  id        String     @id @default(cuid())
+  userId    String
+  menuDate  String
+  servings  Int        @default(2)
+  status    String     @default("draft")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     MenuItem[]
+
+  @@unique([userId, menuDate])
+}
+
+model MenuItem {
+  id         String @id @default(cuid())
+  menuId     String
+  dishId     String
+  quantity   Int    @default(1)
+  note       String @default("")
+  sortOrder  Int
+  cookStatus String @default("pending")
+  currentStep Int   @default(1)
+  menu       Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dish       Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  records    CookRecord[]
+}
+
+model CookRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  dishId           String
+  menuItemId       String?
+  startedAt        DateTime @default(now())
+  finishedAt       DateTime @default(now())
+  actualMinutes    Int
+  photos           String
+  tasteFeedback    String
+  note             String
+  includeInHistory Boolean  @default(true)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dish             Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  menuItem         MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  rating           Rating?
+}
+
+model Rating {
+  id                String     @id @default(cuid())
+  cookRecordId      String     @unique
+  tasteScore        Float
+  appearanceScore   Float
+  similarityScore   Float
+  heatScore         Float
+  satisfactionScore Float
+  overallScore      Float
+  comment           String
+  createdAt         DateTime   @default(now())
+  record            CookRecord @relation(fields: [cookRecordId], references: [id], onDelete: Cascade)
+}
