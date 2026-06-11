@@ -1,7 +1,0 @@
-{
-  "h5Pid": 27256,
-  "exited": false,
-  "ready": true,
-  "out": "\n> dev:h5\n> uni --host 0.0.0.0 --port 5176\n\nPlease note that in running mode, due to log output, sourcemap, and uncompressed source code, the performance and package size are not as good as release mode.\nVite is compiled on demand, and clicking on an uncompiled page at runtime will compile first and then load, resulting in a slower display, and there is no such problem after release.\nCompiler version: 5.12（vue3）\nCompiling...\n\u001b[36m\n  vite v5.2.8\u001b[39m\u001b[32m dev server running at:\n\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mLocal\u001b[22m:   \u001b[36mhttp://localhost:\u001b[1m5176\u001b[22m/\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mNetwork\u001b[22m: \u001b[36mhttp://198.18.0.1:\u001b[1m5176\u001b[22m/\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mNetwork\u001b[22m: \u001b[36mhttp://26.74.77.246:\u001b[1m5176\u001b[22m/\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mNetwork\u001b[22m: \u001b[36mhttp://192.168.3.36:\u001b[1m5176\u001b[22m/\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mNetwork\u001b[22m: \u001b[36mhttp://172.22.192.1:\u001b[1m5176\u001b[22m/\u001b[39m\n  \u001b[32m➜\u001b[39m  \u001b[1mNetwork\u001b[22m: \u001b[36mhttp://172.22.96.1:\u001b[1m5176\u001b[22m/\u001b[39m\n\n  \u001b[36mready in 3376ms.\u001b[39m\n\n",
-  "err": null
-}
