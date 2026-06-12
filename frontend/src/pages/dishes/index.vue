@@ -9,37 +9,37 @@
       <input v-model="keyword" placeholder="搜索菜名 / 食材 / 做法" />
     </view>
 
-    <scroll-view scroll-x class="category-tabs" show-scrollbar="false">
-      <view class="tab-track">
-      <button
-        v-for="item in categories"
-        :key="item.key"
-        :class="['category', activeCategory === item.key ? 'active' : '']"
-        hover-class="tap"
-        @tap="activeCategory = item.key"
-      >
-        {{ item.label }}
-      </button>
-      </view>
-    </scroll-view>
+    <view class="filter-row card">
+      <picker :range="difficultyPickerNames" :value="activeDifficultyIndex" @change="onDifficultyChange">
+        <view :class="['filter-control', { active: activeDifficulty !== 'all' }]">
+          <text>{{ activeDifficultyLabel }}</text>
+          <text class="filter-mark">⌄</text>
+        </view>
+      </picker>
 
-    <view class="source-tabs card">
-      <button
-        v-for="item in sourceOptions"
-        :key="item.key"
-        :class="{ active: activeSource === item.key }"
-        hover-class="tap"
-        @tap="activeSource = item.key"
-      >
-        {{ item.label }}
+      <button :class="['filter-control', { active: sortKey === 'time' }]" hover-class="tap" @tap="toggleSort('time')">
+        <text>时间</text>
+        <text class="filter-mark">{{ sortIndicator('time') }}</text>
+      </button>
+
+      <picker :range="categoryNames" :value="activeCategoryIndex" @change="onCategoryChange">
+        <view :class="['filter-control', { active: activeCategory !== 'all' }]">
+          <text>{{ activeCategoryLabel }}</text>
+          <text class="filter-mark">⌄</text>
+        </view>
+      </picker>
+
+      <button :class="['filter-control', { active: sortKey === 'rating' }]" hover-class="tap" @tap="toggleSort('rating')">
+        <text>评分</text>
+        <text class="filter-mark">{{ sortIndicator('rating') }}</text>
       </button>
     </view>
 
-    <view class="filter-row card">
-      <button>难度⌄</button>
-      <button>时间⌄</button>
-      <button>口味⌄</button>
-      <button>最近评分⌄</button>
+    <view v-if="activeFilters.length" class="active-filters">
+      <view v-for="item in activeFilters" :key="item.key">
+        <text>{{ item.label }}</text>
+        <button hover-class="tap" @tap="item.clear">×</button>
+      </view>
     </view>
 
     <button class="add-dish card" hover-class="tap" @tap="goCreate">
@@ -72,22 +72,26 @@ import DishListItem from '@/components/DishListItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/seed'
-import type { DishCategory, DishSourceType } from '@/data/types'
+import type { Difficulty, Dish, DishCategory } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
+
+type DifficultyFilter = Difficulty | 'all'
+type SortKey = 'default' | 'time' | 'rating'
+type SortDirection = 'asc' | 'desc'
 
 const store = useKitchenStore()
 const keyword = ref('')
 const activeCategory = ref<DishCategory | 'all'>('all')
-const activeSource = ref<DishSourceType | 'all'>('all')
+const activeDifficulty = ref<DifficultyFilter>('all')
+const sortKey = ref<SortKey>('default')
+const sortDirection = ref<SortDirection>('asc')
 const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).map((key) => ({
   key,
   label: categoryLabels[key]
 }))
-const sourceOptions: Array<{ key: DishSourceType | 'all'; label: string }> = [
-  { key: 'all', label: '全部来源' },
-  { key: 'system_sync', label: '后台同步' },
-  { key: 'user_created', label: '我录入的' }
-]
+const categoryNames = categories.map((item) => item.label)
+const difficulties: DifficultyFilter[] = ['all', '简单', '中等', '较难']
+const difficultyPickerNames = ['全部难度', '简单', '中等', '较难']
 
 onLoad((query) => {
   if (query?.keyword && typeof query.keyword === 'string') keyword.value = query.keyword
@@ -99,7 +103,75 @@ onShow(async () => {
   else await store.ensureRemoteDishes()
 })
 
-const dishes = computed(() => store.dishesByCategory(activeCategory.value, keyword.value, activeSource.value))
+const activeCategoryIndex = computed(() => Math.max(0, categories.findIndex((item) => item.key === activeCategory.value)))
+const activeCategoryLabel = computed(() => categoryLabels[activeCategory.value])
+const activeDifficultyIndex = computed(() => Math.max(0, difficulties.findIndex((item) => item === activeDifficulty.value)))
+const activeDifficultyLabel = computed(() => (activeDifficulty.value === 'all' ? '难度' : activeDifficulty.value))
+const activeFilters = computed(() => {
+  const rows: Array<{ key: string; label: string; clear: () => void }> = []
+  if (activeDifficulty.value !== 'all') rows.push({ key: 'difficulty', label: `难度：${activeDifficulty.value}`, clear: () => (activeDifficulty.value = 'all') })
+  if (activeCategory.value !== 'all') rows.push({ key: 'category', label: `分类：${activeCategoryLabel.value}`, clear: () => (activeCategory.value = 'all') })
+  if (sortKey.value !== 'default') rows.push({ key: 'sort', label: `${sortKey.value === 'time' ? '时间' : '评分'}${sortIndicator(sortKey.value)}`, clear: clearSort })
+  return rows
+})
+const dishes = computed(() => {
+  const rows = store
+    .dishesByCategory(activeCategory.value, keyword.value, 'all')
+    .filter((dish) => activeDifficulty.value === 'all' || dish.difficulty === activeDifficulty.value)
+
+  return sortDishes(rows)
+})
+
+function onCategoryChange(event: { detail: { value: string | number } }) {
+  const index = Number(event.detail.value)
+  activeCategory.value = categories[index]?.key || 'all'
+}
+
+function onDifficultyChange(event: { detail: { value: string | number } }) {
+  const index = Number(event.detail.value)
+  activeDifficulty.value = difficulties[index] || 'all'
+}
+
+function toggleSort(key: Exclude<SortKey, 'default'>) {
+  if (sortKey.value !== key) {
+    sortKey.value = key
+    sortDirection.value = key === 'time' ? 'asc' : 'desc'
+    return
+  }
+
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+}
+
+function clearSort() {
+  sortKey.value = 'default'
+  sortDirection.value = 'asc'
+}
+
+function sortIndicator(key: SortKey) {
+  if (key === 'default') return ''
+  if (sortKey.value !== key) return '↕'
+  return sortDirection.value === 'asc' ? '↑' : '↓'
+}
+
+function sortDishes(rows: Dish[]) {
+  if (sortKey.value === 'default') return rows
+
+  return [...rows].sort((left, right) => {
+    const value = sortKey.value === 'time'
+      ? compareNumber(left.estimatedMinutes, right.estimatedMinutes)
+      : compareNumber(left.rating || 0, right.rating || 0)
+
+    if (value !== 0) return value
+    if (sortKey.value === 'rating' && left.ratingCount !== right.ratingCount) return compareNumber(left.ratingCount || 0, right.ratingCount || 0)
+    if (left.estimatedMinutes !== right.estimatedMinutes) return left.estimatedMinutes - right.estimatedMinutes
+    return left.name.localeCompare(right.name)
+  })
+}
+
+function compareNumber(left: number, right: number) {
+  const value = left - right
+  return sortDirection.value === 'asc' ? value : -value
+}
 
 function viewDish(id: string) {
   uni.navigateTo({ url: `/pages/dish-detail/index?id=${id}` })
@@ -136,78 +208,34 @@ function goCreate() {
   font-size: 28rpx;
 }
 
-.category-tabs {
-  width: 100%;
-  margin: 26rpx 0 22rpx;
-  white-space: nowrap;
-}
-
-.tab-track {
-  display: flex;
-  gap: 14rpx;
-  min-width: max-content;
-}
-
-.category {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  height: 66rpx;
-  padding: 0 24rpx;
-  border: 1rpx solid $border;
-  border-radius: 28rpx;
-  background: #fff;
-  color: $text-main;
-  font-size: 28rpx;
-  font-weight: 800;
-}
-
-.category.active {
-  border-color: $primary;
-  color: $primary;
-  background: #fff8f2;
-}
-
-.source-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  height: 72rpx;
-  padding: 8rpx;
-  margin-bottom: 22rpx;
-  border-radius: 24rpx;
-}
-
-.source-tabs button {
-  height: 56rpx;
-  border-radius: 18rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.source-tabs button.active {
-  background: $text-main;
-  color: #fff;
-}
-
 .filter-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   align-items: center;
   height: 72rpx;
   padding: 0;
-  margin-bottom: 22rpx;
+  margin: 24rpx 0 14rpx;
   border-radius: 22rpx;
+  overflow: hidden;
 }
 
+.filter-row picker,
+.filter-row uni-picker {
+  min-width: 0;
+  height: 72rpx;
+}
+
+.filter-control,
 .filter-row button,
 .filter-row uni-button {
   height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4rpx;
+  min-width: 0;
+  margin: 0;
+  padding: 0 8rpx;
   color: $text-main;
   font-size: 25rpx;
   font-weight: 500;
@@ -218,8 +246,72 @@ function goCreate() {
   box-shadow: none;
 }
 
+.filter-control {
+  box-sizing: border-box;
+}
+
+.filter-control text:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-control.active {
+  color: $primary;
+  font-weight: 900;
+}
+
+.filter-mark {
+  flex: 0 0 auto;
+  color: currentColor;
+  font-size: 20rpx;
+}
+
 .filter-row button::after,
 .filter-row uni-button::after {
+  border: 0;
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 0 0 18rpx;
+}
+
+.active-filters view {
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 0 10rpx 0 18rpx;
+  border: 1rpx solid rgba(255, 123, 37, 0.22);
+  border-radius: 999rpx;
+  background: #fff7ef;
+  color: $primary;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.active-filters button,
+.active-filters uni-button {
+  width: 30rpx;
+  height: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 123, 37, 0.12);
+  color: $primary;
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.active-filters button::after,
+.active-filters uni-button::after {
   border: 0;
 }
 

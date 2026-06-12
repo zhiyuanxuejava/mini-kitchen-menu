@@ -17,6 +17,13 @@ import type {
 
 const STORAGE_KEY = 'zhangshao-menu-state'
 const PROTOTYPE_MENU_DISH_IDS = ['hongshaorou', 'tomato-egg', 'seaweed-egg-soup', 'shredded-potato']
+const LEGACY_DISH_NAMES: Record<string, string> = {
+  hongshaorou: '红烧肉',
+  'mapo-tofu': '麻婆豆腐',
+  'tomato-egg': '西红柿炒鸡蛋',
+  'seaweed-egg-soup': '紫菜蛋花汤',
+  'shredded-potato': '酸辣土豆丝'
+}
 const MIN_REAL_DISH_COUNT = 50
 type DishSourceFilter = DishSourceType | 'all'
 
@@ -95,6 +102,33 @@ function menuFromDishes(dishes: Dish[]) {
       currentStep: 1
     }))
   }
+}
+
+function dishByRecordId(dishes: Dish[], dishId: string) {
+  const direct = dishes.find((dish) => dish.id === dishId)
+  if (direct) return direct
+
+  const legacyName = LEGACY_DISH_NAMES[dishId]
+  if (!legacyName) return undefined
+  return dishes.find((dish) => dish.name === legacyName || dish.name.includes(legacyName) || legacyName.includes(dish.name))
+}
+
+function repairRecordsForDishes(records: CookRecord[], dishes: Dish[]) {
+  let changed = false
+  const repaired = records.map((record) => {
+    if (dishes.some((dish) => dish.id === record.dishId)) return record
+
+    const dish = dishByRecordId(dishes, record.dishId)
+    if (!dish) return record
+    changed = true
+    return {
+      ...record,
+      dishId: dish.id,
+      photos: record.photos.length ? record.photos : [dish.coverImage]
+    }
+  })
+
+  return { records: repaired, changed }
 }
 
 function defaultMenu(): TodayMenu {
@@ -218,7 +252,7 @@ export const useKitchenStore = defineStore('kitchen', {
         .filter((record) => record.includeInHistory)
         .map((record) => ({
           ...record,
-          dish: state.dishes.find((dish) => dish.id === record.dishId) as Dish,
+          dish: dishByRecordId(state.dishes, record.dishId) as Dish,
           rating: state.ratings.find((rating) => rating.cookRecordId === record.id)
         }))
         .filter((record) => record.dish)
@@ -294,6 +328,8 @@ export const useKitchenStore = defineStore('kitchen', {
       const dishes = await this.runRemote(() => kitchenApi.listDishes(this.token))
       this.dishes = dishes
       if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      const repaired = repairRecordsForDishes(this.records, this.dishes)
+      if (repaired.changed) this.records = repaired.records
       this.persist()
     },
     async ensureRemoteDishes() {

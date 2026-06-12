@@ -3,8 +3,12 @@
     <view class="mine-head">
       <text class="title-xl">我的</text>
       <view class="head-icons">
-        <image :src="icons.bell" mode="aspectFit" />
-        <image :src="icons.settings" mode="aspectFit" />
+        <button class="icon-btn" hover-class="tap" @tap="notify">
+          <image :src="icons.bell" mode="aspectFit" />
+        </button>
+        <button class="icon-btn settings-trigger" hover-class="tap" @tap="openSettings">
+          <image :src="icons.settings" mode="aspectFit" />
+        </button>
       </view>
     </view>
 
@@ -45,8 +49,8 @@
     <SectionTitle title="最近成品">
       <button class="section-extra" hover-class="tap" @tap="goRecords">查看全部 ›</button>
     </SectionTitle>
-    <view class="recent-grid">
-      <view v-for="record in store.historyRecords.slice(0, 2)" :key="record.id" class="recent card">
+    <view v-if="recentRecords.length" class="recent-grid">
+      <view v-for="record in recentRecords" :key="record.id" class="recent card" @tap="viewDish(record.dish.id)">
         <image :src="record.photos[0] || record.dish.coverImage" mode="aspectFill" />
         <view>
           <text class="recent-name line-clamp-1">{{ record.dish.name }} {{ record.dish.emoji }}</text>
@@ -56,22 +60,42 @@
         <text class="arrow">›</text>
       </view>
     </view>
-
-    <view class="settings card">
-      <button v-for="item in settings" :key="item.title" hover-class="tap" @tap="item.tap">
-        <image :src="item.icon" mode="aspectFit" />
-        <text>{{ item.title }}</text>
-        <text class="arrow">›</text>
-      </button>
+    <view v-else class="recent-empty card" @tap="goRecords">
+      <image :src="icons.history" mode="aspectFit" />
+      <view>
+        <text>还没有最近成品</text>
+        <small>完成一次做菜后会显示在这里</small>
+      </view>
+      <text class="arrow">›</text>
     </view>
 
-    <button class="logout" hover-class="tap" @tap="logout">退出登录</button>
+    <view v-if="showSettings" class="settings-overlay" @tap="closeSettings">
+      <view class="settings-panel" @tap.stop>
+        <view class="panel-head">
+          <view>
+            <text class="panel-title">设置</text>
+            <text class="panel-sub">账号、数据与消息管理</text>
+          </view>
+          <button class="panel-close" hover-class="tap" @tap="closeSettings">×</button>
+        </view>
+
+        <view class="settings-list">
+          <button v-for="item in settings" :key="item.title" class="setting-row" hover-class="tap" @tap="runSetting(item)">
+            <image :src="item.icon" mode="aspectFit" />
+            <text>{{ item.title }}</text>
+            <text class="arrow">›</text>
+          </button>
+        </view>
+
+        <button class="logout" hover-class="tap" @tap="logout">退出登录</button>
+      </view>
+    </view>
     <BottomTabbar active="mine" />
   </AppPage>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
@@ -80,11 +104,14 @@ import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 
 const store = useKitchenStore()
+const showSettings = ref(false)
 
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
 })
+
+const recentRecords = computed(() => store.historyRecords.slice(0, 4))
 
 const quickEntries = computed(() => [
   { title: '我的收藏', sub: '收藏的美味菜谱', icon: icons.heart, tap: () => uni.showToast({ title: '收藏入口已预留', icon: 'none' }) },
@@ -104,8 +131,30 @@ function goRecords() {
   uni.navigateTo({ url: '/pages/records/index' })
 }
 
+function viewDish(id: string) {
+  uni.navigateTo({ url: `/pages/dish-detail/index?id=${id}` })
+}
+
+function notify() {
+  uni.showToast({ title: '暂无新提醒', icon: 'none' })
+}
+
+function openSettings() {
+  showSettings.value = true
+}
+
+function closeSettings() {
+  showSettings.value = false
+}
+
+function runSetting(item: (typeof settings)[number]) {
+  showSettings.value = false
+  item.tap()
+}
+
 function logout() {
   store.logout()
+  showSettings.value = false
   uni.reLaunch({ url: '/pages/login/index' })
 }
 </script>
@@ -136,7 +185,28 @@ function logout() {
 
 .head-icons {
   display: flex;
-  gap: 26rpx;
+  gap: 18rpx;
+}
+
+.icon-btn {
+  width: 58rpx;
+  height: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 20rpx;
+  background: rgba(255, 249, 244, 0.82);
+  line-height: 1;
+}
+
+.icon-btn::after,
+.panel-close::after,
+.setting-row::after,
+.logout::after {
+  border: 0;
 }
 
 .head-icons image {
@@ -316,28 +386,126 @@ function logout() {
   font-size: 24rpx;
 }
 
-.settings {
-  margin-top: 34rpx;
-  padding: 10rpx 26rpx;
+.recent-empty {
+  display: grid;
+  grid-template-columns: 72rpx minmax(0, 1fr) 24rpx;
+  gap: 18rpx;
+  align-items: center;
+  padding: 26rpx;
 }
 
-.settings button {
-  height: 94rpx;
+.recent-empty image {
+  width: 60rpx;
+  height: 60rpx;
+}
+
+.recent-empty text {
+  display: block;
+  color: $text-main;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.recent-empty small {
+  display: block;
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+}
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
   display: grid;
-  grid-template-columns: 54rpx 1fr 30rpx;
+  align-items: end;
+  padding: 0 22rpx calc(22rpx + env(safe-area-inset-bottom));
+  background: rgba(38, 28, 22, 0.34);
+  backdrop-filter: blur(4rpx);
+}
+
+.settings-panel {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 28rpx;
+  border: 1rpx solid rgba(255, 123, 37, 0.18);
+  border-radius: 34rpx 34rpx 26rpx 26rpx;
+  background: #fffdfb;
+  box-shadow: 0 -16rpx 46rpx rgba(55, 34, 20, 0.18);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.panel-title,
+.panel-sub {
+  display: block;
+}
+
+.panel-title {
+  color: $text-main;
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.panel-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+}
+
+.panel-close {
+  width: 64rpx;
+  height: 64rpx;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #fff3ed;
+  color: $primary;
+  font-size: 42rpx;
+  font-weight: 300;
+  line-height: 58rpx;
+}
+
+.settings-list {
+  overflow: hidden;
+  margin-top: 26rpx;
+  border: 1rpx solid #f0e7e1;
+  border-radius: 26rpx;
+  background: #fffaf5;
+}
+
+.setting-row {
+  height: 96rpx;
+  display: grid;
+  grid-template-columns: 54rpx minmax(0, 1fr) 30rpx;
   align-items: center;
   gap: 18rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  border: 0;
   border-bottom: 1rpx solid #f0e7e1;
+  border-radius: 0;
+  background: transparent;
   color: $text-main;
   font-size: 30rpx;
+  line-height: 1;
   text-align: left;
 }
 
-.settings button:last-child {
+.setting-row:last-child {
   border-bottom: 0;
 }
 
-.settings image {
+.setting-row image {
   width: 46rpx;
   height: 46rpx;
 }
@@ -349,7 +517,7 @@ function logout() {
 
 .logout {
   height: 72rpx;
-  margin: 28rpx 0 4rpx;
+  margin: 26rpx 0 0;
   border-radius: 22rpx;
   background: #fff3ed;
   color: $primary;

@@ -13,7 +13,6 @@
         <view class="tags">
           <text v-for="tag in dish.tasteTags" :key="tag" class="pill">{{ tag }}</text>
           <text class="pill green">{{ dish.difficulty }}难度</text>
-          <text class="pill source">{{ sourceLabel }}</text>
         </view>
         <view class="hero-meta">
           <view>
@@ -33,7 +32,6 @@
     <view class="detail-actions">
       <button class="primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
       <button v-if="canEdit" class="ghost-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
-      <button v-else class="ghost-btn readonly" hover-class="tap" @tap="showReadonly">后台同步 · 只读</button>
     </view>
 
     <view class="section-card card">
@@ -106,7 +104,6 @@ onShow(async () => {
 
 const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
-const sourceLabel = computed(() => (dish.value ? store.dishSourceLabel(dish.value) : '后台同步'))
 const ingredientGroups = computed(() => {
   const types: IngredientGroupType[] = ['main', 'side', 'seasoning']
   return types.map((type) => ({
@@ -120,9 +117,6 @@ function editDish() {
   uni.navigateTo({ url: `/pages/dish-form/index?id=${id.value}` })
 }
 
-function showReadonly() {
-  uni.showToast({ title: '后台同步菜品不可编辑', icon: 'none' })
-}
 </script>
 
 <style scoped lang="scss">
@@ -212,20 +206,13 @@ function showReadonly() {
 
 .detail-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
   margin: 28rpx 0;
 }
 
-.pill.source {
-  background: #fff;
-  border: 1rpx solid $border;
-  color: $text-sub;
-}
-
-.ghost-btn.readonly {
-  border-color: $border;
-  color: $text-sub;
+.detail-actions .primary-btn:only-child {
+  grid-column: 1 / -1;
 }
 
 .section-card {

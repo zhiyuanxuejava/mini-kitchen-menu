@@ -34,9 +34,9 @@
     <SectionTitle title="最近做过">
       <button class="section-extra" hover-class="tap" @tap="goRecords">查看全部 ›</button>
     </SectionTitle>
-    <view class="recent-grid">
-      <view v-for="record in recentRecords" :key="record.id" class="recent-card card">
-        <image :src="record.dish.coverImage" mode="aspectFill" />
+    <view v-if="recentRecords.length" class="recent-grid">
+      <view v-for="record in recentRecords" :key="record.id" class="recent-card card" @tap="viewDish(record.dish.id)">
+        <image :src="record.photos[0] || record.dish.coverImage" mode="aspectFill" />
         <view>
           <text class="recent-title line-clamp-1">{{ record.dish.name }} {{ record.dish.emoji }}</text>
           <text class="recent-date">{{ record.finishedAt.slice(0, 10) }}</text>
@@ -45,13 +45,9 @@
         <text class="arrow">›</text>
       </view>
     </view>
-
-    <view class="quick-grid">
-      <button v-for="entry in quickEntries" :key="entry.title" class="quick-card" hover-class="tap" @tap="entry.tap">
-        <image :src="entry.icon" mode="aspectFit" />
-        <text class="quick-title">{{ entry.title }}</text>
-        <text class="quick-sub">{{ entry.sub }}</text>
-      </button>
+    <view v-else class="recent-empty card" @tap="goRecords">
+      <text class="empty-title">还没有最近做过的菜</text>
+      <text class="empty-desc">完成一道菜并上传成品后，会在这里显示最近记录。</text>
     </view>
 
     <BottomTabbar active="home" />
@@ -91,13 +87,6 @@ const recommended = computed(() => {
 
 const recentRecords = computed(() => store.historyRecords.slice(0, 2))
 const displayEstimatedMinutes = computed(() => (store.menuDishCount === 4 && store.menu.servings === 3 ? 75 : store.estimatedMinutes))
-
-const quickEntries = computed(() => [
-  { title: '我的菜品库', sub: '管理我的菜谱', icon: icons.cookbook, tap: () => uni.reLaunch({ url: '/pages/dishes/index' }) },
-  { title: '新增菜品', sub: '记录新菜谱', icon: icons.plus, tap: () => uni.navigateTo({ url: '/pages/dish-form/index' }) },
-  { title: '做菜台', sub: '开始烹饪', icon: icons.pan, tap: () => uni.reLaunch({ url: '/pages/cook/index' }) },
-  { title: '历史记录', sub: '查看烹饪记录', icon: icons.history, tap: () => uni.navigateTo({ url: '/pages/records/index' }) }
-])
 
 function shuffle() {
   if (!store.dishes.length) return
@@ -173,8 +162,7 @@ function goRecords() {
 }
 
 .recommend-grid,
-.recent-grid,
-.quick-grid {
+.recent-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
@@ -226,51 +214,27 @@ function goRecords() {
   font-size: 44rpx;
 }
 
-.quick-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 24rpx;
+.recent-empty {
+  padding: 28rpx;
+  border-style: dashed;
+  background: rgba(255, 253, 250, 0.72);
 }
 
-.quick-card {
-  min-height: 142rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12rpx 8rpx;
-  border: 1rpx solid $border;
-  border-radius: 26rpx;
-  background: linear-gradient(145deg, #fff 0%, #fff7ee 100%);
-  box-shadow: $shadow-soft;
-}
-
-.quick-card image {
-  width: 54rpx;
-  height: 54rpx;
-}
-
-.quick-title {
+.empty-title,
+.empty-desc {
   display: block;
-  max-width: 100%;
-  margin-top: 8rpx;
+}
+
+.empty-title {
   color: $text-main;
-  font-size: 22rpx;
+  font-size: 28rpx;
   font-weight: 900;
-  overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.quick-sub {
-  display: block;
-  max-width: 100%;
-  margin-top: 5rpx;
+.empty-desc {
+  margin-top: 10rpx;
   color: $text-sub;
-  font-size: 18rpx;
-  overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 24rpx;
+  line-height: 1.45;
 }
 </style>
