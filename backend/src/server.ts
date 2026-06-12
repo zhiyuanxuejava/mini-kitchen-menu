@@ -19,6 +19,7 @@ const uploadDir = path.resolve(dirname, '..', 'uploads')
 const staticDir = path.join(rootDir, 'frontend', 'src', 'static')
 const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.json')
 const port = Number(process.env.PORT || 3001)
+const host = process.env.HOST || '0.0.0.0'
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
 const configuredAdminEmails = new Set(
   String(process.env.ADMIN_EMAILS || '')
@@ -704,6 +705,6 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 await ensureDatabase(prisma)
 await seedSystemDishesFromSample()
 
-app.listen(port, () => {
-  console.log(`Zhangshao menu API listening on http://localhost:${port}`)
+app.listen(port, host, () => {
+  console.log(`Zhangshao menu API listening on http://${host}:${port}`)
 })

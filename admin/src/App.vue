@@ -184,7 +184,21 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001'
+const DEFAULT_API_PORT = '3001'
+
+function resolveApiBase() {
+  const configured = import.meta.env.VITE_API_BASE
+  if (configured) return configured.replace(/\/$/, '')
+
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  if (host && !['localhost', '127.0.0.1', '::1'].includes(host)) {
+    return `http://${host}:${DEFAULT_API_PORT}`
+  }
+
+  return `http://localhost:${DEFAULT_API_PORT}`
+}
+
+const API_BASE = resolveApiBase()
 const TOKEN_KEY = 'zhangshao-admin-token'
 
 type Overview = {

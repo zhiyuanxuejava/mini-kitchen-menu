@@ -1,9 +1,23 @@
 import type { Difficulty, Dish, DishCategory, DishSourceType, IngredientGroupType, UserProfile } from '@/data/types'
 
-const DEFAULT_API_BASE = 'http://localhost:3001'
+const DEFAULT_API_PORT = '3001'
 const PLACEHOLDER_IMAGE = '/static/assets/placeholders/png/dish_cover_placeholder.png.png'
 
-export const apiBase = (import.meta.env.VITE_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '')
+function resolveApiBase() {
+  const configured = import.meta.env.VITE_API_BASE
+  if (configured) return configured.replace(/\/$/, '')
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host && !['localhost', '127.0.0.1', '::1'].includes(host)) {
+      return `http://${host}:${DEFAULT_API_PORT}`
+    }
+  }
+
+  return `http://localhost:${DEFAULT_API_PORT}`
+}
+
+export const apiBase = resolveApiBase()
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
