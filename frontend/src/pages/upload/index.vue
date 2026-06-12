@@ -85,6 +85,10 @@ onLoad((query) => {
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else {
+    store.ensureRemoteDishes()
+    store.refreshStats()
+  }
 })
 
 const item = computed(() => store.menu.items.find((candidate) => candidate.id === itemId.value))
@@ -101,22 +105,26 @@ watch(
   { immediate: true }
 )
 
-function submit() {
+async function submit() {
   if (!dish.value) return
   if (!photos.value.length) {
     uni.showToast({ title: '请至少上传 1 张照片', icon: 'none' })
     return
   }
-  const recordId = store.createCookRecord({
-    dishId: dish.value.id,
-    menuItemId: itemId.value || undefined,
-    actualMinutes: Number(actualMinutes.value) || dish.value.estimatedMinutes,
-    photos: photos.value,
-    tasteFeedback: taste.value,
-    note: note.value.trim(),
-    includeInHistory: includeInHistory.value
-  })
-  uni.redirectTo({ url: `/pages/rating/index?recordId=${recordId}` })
+  try {
+    const recordId = await store.createCookRecord({
+      dishId: dish.value.id,
+      menuItemId: itemId.value || undefined,
+      actualMinutes: Number(actualMinutes.value) || dish.value.estimatedMinutes,
+      photos: photos.value,
+      tasteFeedback: taste.value,
+      note: note.value.trim(),
+      includeInHistory: includeInHistory.value
+    })
+    uni.redirectTo({ url: `/pages/rating/index?recordId=${recordId}` })
+  } catch {
+    uni.showToast({ title: store.apiError || '提交失败', icon: 'none' })
+  }
 }
 
 </script>

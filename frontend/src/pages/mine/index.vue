@@ -15,7 +15,7 @@
     <view class="profile card">
       <image class="avatar" :src="store.user?.avatarUrl || icons.avatar" mode="aspectFill" />
       <view class="profile-copy">
-        <text class="nickname">小厨房</text>
+        <text class="nickname">{{ displayName }}</text>
         <text>记录每一次下厨</text>
       </view>
       <image class="profile-pot" :src="icons.pot" mode="aspectFit" />
@@ -23,17 +23,17 @@
         <view>
           <image :src="icons.cookbook" mode="aspectFit" />
           <text>我的菜品</text>
-          <strong>28 道</strong>
+          <strong>{{ store.myDishCount }} 道</strong>
         </view>
         <view>
           <image :src="icons.clockOrange" mode="aspectFit" />
           <text>做菜记录</text>
-          <strong>46 次</strong>
+          <strong>{{ store.myRecordCount }} 次</strong>
         </view>
         <view>
           <image :src="icons.star" mode="aspectFit" />
           <text>平均评分</text>
-          <strong>4.6 分</strong>
+          <strong>{{ averageRatingText }}</strong>
         </view>
       </view>
     </view>
@@ -69,33 +69,12 @@
       <text class="arrow">›</text>
     </view>
 
-    <view v-if="showSettings" class="settings-overlay" @tap="closeSettings">
-      <view class="settings-panel" @tap.stop>
-        <view class="panel-head">
-          <view>
-            <text class="panel-title">设置</text>
-            <text class="panel-sub">账号、数据与消息管理</text>
-          </view>
-          <button class="panel-close" hover-class="tap" @tap="closeSettings">×</button>
-        </view>
-
-        <view class="settings-list">
-          <button v-for="item in settings" :key="item.title" class="setting-row" hover-class="tap" @tap="runSetting(item)">
-            <image :src="item.icon" mode="aspectFit" />
-            <text>{{ item.title }}</text>
-            <text class="arrow">›</text>
-          </button>
-        </view>
-
-        <button class="logout" hover-class="tap" @tap="logout">退出登录</button>
-      </view>
-    </view>
     <BottomTabbar active="mine" />
   </AppPage>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
@@ -104,14 +83,16 @@ import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 
 const store = useKitchenStore()
-const showSettings = ref(false)
 
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else store.refreshSessionData()
 })
 
 const recentRecords = computed(() => store.historyRecords.slice(0, 4))
+const displayName = computed(() => store.user?.nickname || '小厨房')
+const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
 
 const quickEntries = computed(() => [
   { title: '我的收藏', sub: '收藏的美味菜谱', icon: icons.heart, tap: () => uni.showToast({ title: '收藏入口已预留', icon: 'none' }) },
@@ -119,13 +100,6 @@ const quickEntries = computed(() => [
   { title: '评分记录', sub: '我的评分汇总', icon: icons.star, tap: () => uni.navigateTo({ url: '/pages/rating-list/index' }) },
   { title: '新增菜品', sub: '记录新菜谱', icon: icons.plus, tap: () => uni.navigateTo({ url: '/pages/dish-form/index' }) }
 ])
-
-const settings = [
-  { title: '个人资料', icon: icons.people, tap: () => uni.showToast({ title: '个人资料入口已预留', icon: 'none' }) },
-  { title: '数据管理', icon: icons.database, tap: () => uni.showToast({ title: '数据管理入口已预留', icon: 'none' }) },
-  { title: '消息提醒', icon: icons.bell, tap: () => uni.showToast({ title: '提醒入口已预留', icon: 'none' }) },
-  { title: '帮助与反馈', icon: icons.help, tap: () => uni.showToast({ title: '反馈入口已预留', icon: 'none' }) }
-]
 
 function goRecords() {
   uni.navigateTo({ url: '/pages/records/index' })
@@ -140,22 +114,7 @@ function notify() {
 }
 
 function openSettings() {
-  showSettings.value = true
-}
-
-function closeSettings() {
-  showSettings.value = false
-}
-
-function runSetting(item: (typeof settings)[number]) {
-  showSettings.value = false
-  item.tap()
-}
-
-function logout() {
-  store.logout()
-  showSettings.value = false
-  uni.reLaunch({ url: '/pages/login/index' })
+  uni.navigateTo({ url: '/pages/settings/index' })
 }
 </script>
 
@@ -202,10 +161,7 @@ function logout() {
   line-height: 1;
 }
 
-.icon-btn::after,
-.panel-close::after,
-.setting-row::after,
-.logout::after {
+.icon-btn::after {
   border: 0;
 }
 
@@ -413,115 +369,8 @@ function logout() {
   font-size: 23rpx;
 }
 
-.settings-overlay {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 60;
-  display: grid;
-  align-items: end;
-  padding: 0 22rpx calc(22rpx + env(safe-area-inset-bottom));
-  background: rgba(38, 28, 22, 0.34);
-  backdrop-filter: blur(4rpx);
-}
-
-.settings-panel {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 28rpx;
-  border: 1rpx solid rgba(255, 123, 37, 0.18);
-  border-radius: 34rpx 34rpx 26rpx 26rpx;
-  background: #fffdfb;
-  box-shadow: 0 -16rpx 46rpx rgba(55, 34, 20, 0.18);
-}
-
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.panel-title,
-.panel-sub {
-  display: block;
-}
-
-.panel-title {
-  color: $text-main;
-  font-size: 36rpx;
-  font-weight: 900;
-}
-
-.panel-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 23rpx;
-}
-
-.panel-close {
-  width: 64rpx;
-  height: 64rpx;
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0;
-  border-radius: 50%;
-  background: #fff3ed;
-  color: $primary;
-  font-size: 42rpx;
-  font-weight: 300;
-  line-height: 58rpx;
-}
-
-.settings-list {
-  overflow: hidden;
-  margin-top: 26rpx;
-  border: 1rpx solid #f0e7e1;
-  border-radius: 26rpx;
-  background: #fffaf5;
-}
-
-.setting-row {
-  height: 96rpx;
-  display: grid;
-  grid-template-columns: 54rpx minmax(0, 1fr) 30rpx;
-  align-items: center;
-  gap: 18rpx;
-  margin: 0;
-  padding: 0 22rpx;
-  border: 0;
-  border-bottom: 1rpx solid #f0e7e1;
-  border-radius: 0;
-  background: transparent;
-  color: $text-main;
-  font-size: 30rpx;
-  line-height: 1;
-  text-align: left;
-}
-
-.setting-row:last-child {
-  border-bottom: 0;
-}
-
-.setting-row image {
-  width: 46rpx;
-  height: 46rpx;
-}
-
 .arrow {
   color: #b3a79f;
   font-size: 40rpx;
-}
-
-.logout {
-  height: 72rpx;
-  margin: 26rpx 0 0;
-  border-radius: 22rpx;
-  background: #fff3ed;
-  color: $primary;
-  font-size: 28rpx;
-  font-weight: 800;
 }
 </style>

@@ -61,6 +61,18 @@
       }
     },
     {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile-edit/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/dish-form/index",
       "style": {
         "navigationStyle": "custom"

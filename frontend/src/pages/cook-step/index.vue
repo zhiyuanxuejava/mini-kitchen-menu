@@ -46,6 +46,7 @@ onLoad((query) => {
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else store.refreshSessionData()
 })
 
 const item = computed(() => store.menu.items.find((candidate) => candidate.id === itemId.value))

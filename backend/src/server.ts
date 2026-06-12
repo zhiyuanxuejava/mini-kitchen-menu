@@ -214,6 +214,11 @@ const emailSchema = z.object({
   password: z.string().min(6)
 })
 
+const profileSchema = z.object({
+  nickname: z.string().trim().min(1).max(24),
+  avatarUrl: z.string().trim().min(1).max(500).optional()
+})
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'zhangshao-menu-api' })
 })
@@ -261,6 +266,18 @@ app.post('/auth/login/wechat', async (req, res) => {
 
 app.post('/auth/logout', auth, (_req, res) => {
   res.json({ ok: true })
+})
+
+app.put('/me/profile', auth, async (req: AuthedRequest, res) => {
+  const body = profileSchema.parse(req.body)
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: {
+      nickname: body.nickname,
+      ...(body.avatarUrl ? { avatarUrl: body.avatarUrl } : {})
+    }
+  })
+  res.json(publicUser(user))
 })
 
 app.get('/categories', auth, async (_req, res) => {
@@ -514,6 +531,49 @@ app.post('/uploads', auth, upload.array('files', 3), (req, res) => {
       originalName: file.originalname
     }))
   })
+})
+
+app.post('/records', auth, async (req: AuthedRequest, res) => {
+  const body = z
+    .object({
+      dishId: z.string(),
+      menuItemId: z.string().optional(),
+      actualMinutes: z.number().int().positive(),
+      photos: z.array(z.string()).default([]),
+      tasteFeedback: z.string(),
+      note: z.string().default(''),
+      includeInHistory: z.boolean().default(true)
+    })
+    .parse(req.body)
+
+  const dish = await findVisibleDish(body.dishId, req.user!.id)
+  if (!dish) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+
+  if (body.menuItemId) {
+    const item = await findMenuItemForUser(body.menuItemId, req.user!.id)
+    if (!item) {
+      res.status(404).json({ message: 'Menu item not found' })
+      return
+    }
+  }
+
+  const record = await prisma.cookRecord.create({
+    data: {
+      userId: req.user!.id,
+      dishId: body.dishId,
+      menuItemId: body.menuItemId,
+      actualMinutes: body.actualMinutes,
+      photos: JSON.stringify(body.photos),
+      tasteFeedback: body.tasteFeedback,
+      note: body.note,
+      includeInHistory: body.includeInHistory
+    },
+    include: { dish: true, rating: true }
+  })
+  res.status(201).json(record)
 })
 
 app.get('/records', auth, async (req: AuthedRequest, res) => {

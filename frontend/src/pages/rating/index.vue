@@ -80,6 +80,7 @@ onLoad((query) => {
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else store.refreshRecordsAndRatings()
 })
 
 const record = computed(() => store.records.find((item) => item.id === recordId.value))
@@ -94,15 +95,19 @@ function later() {
   uni.reLaunch({ url: '/pages/cook/index' })
 }
 
-function submit() {
+async function submit() {
   if (!record.value) return
-  store.saveRating(record.value.id, {
-    ...scores,
-    overallScore: Number(overall.value),
-    comment: comment.value.trim()
-  })
-  uni.showToast({ title: '评分已保存', icon: 'success' })
-  setTimeout(() => uni.reLaunch({ url: '/pages/mine/index' }), 500)
+  try {
+    await store.saveRating(record.value.id, {
+      ...scores,
+      overallScore: Number(overall.value),
+      comment: comment.value.trim()
+    })
+    uni.showToast({ title: '评分已保存', icon: 'success' })
+    setTimeout(() => uni.reLaunch({ url: '/pages/mine/index' }), 500)
+  } catch {
+    uni.showToast({ title: store.apiError || '评分保存失败', icon: 'none' })
+  }
 }
 </script>
 

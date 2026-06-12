@@ -13,6 +13,13 @@ export interface UserProfile {
   role?: 'user' | 'admin'
 }
 
+export interface MeStats {
+  dishCount: number
+  visibleDishCount: number
+  recordCount: number
+  averageRating: number
+}
+
 export interface Ingredient {
   id: string
   groupType: IngredientGroupType

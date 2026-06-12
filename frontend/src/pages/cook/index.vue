@@ -60,6 +60,7 @@ const tabs = [
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else store.refreshSessionData()
 })
 
 const visibleItems = computed(() => store.menuDishes)

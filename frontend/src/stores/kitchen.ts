@@ -8,6 +8,7 @@ import type {
   Dish,
   DishCategory,
   DishSourceType,
+  MeStats,
   MenuItem,
   Rating,
   TasteFeedback,
@@ -33,6 +34,7 @@ interface KitchenState {
   apiError: string
   token: string
   user: UserProfile | null
+  stats: MeStats
   dishes: Dish[]
   menu: TodayMenu
   records: CookRecord[]
@@ -42,6 +44,7 @@ interface KitchenState {
 interface PersistedKitchenState {
   token?: string
   user: UserProfile | null
+  stats?: MeStats
   dishes: Dish[]
   menu: TodayMenu
   records: CookRecord[]
@@ -192,12 +195,22 @@ function defaultRatings(): Rating[] {
   ]
 }
 
+function defaultStats(): MeStats {
+  return {
+    dishCount: 0,
+    visibleDishCount: 0,
+    recordCount: 0,
+    averageRating: 0
+  }
+}
+
 function initialState(): Omit<KitchenState, 'hydrated'> {
   return {
     loading: false,
     apiError: '',
     token: '',
     user: null,
+    stats: defaultStats(),
     dishes: seedDishes,
     menu: defaultMenu(),
     records: defaultRecords(),
@@ -229,6 +242,14 @@ export const useKitchenStore = defineStore('kitchen', {
     cookingCount: (state) => state.menu.items.filter((item) => item.cookStatus === 'cooking').length,
     doneCount: (state) => state.menu.items.filter((item) => item.cookStatus === 'done').length,
     menuDishCount: (state) => state.menu.items.reduce((sum, item) => sum + item.quantity, 0),
+    myDishCount(state): number {
+      if (state.token) return state.stats.visibleDishCount
+      if (!state.user?.id) return 0
+      return state.dishes.length
+    },
+    myRecordCount(state): number {
+      return state.token ? state.stats.recordCount : state.records.filter((item) => item.includeInHistory).length
+    },
     estimatedMinutes(state): number {
       const menuIds = [...state.menu.items].sort((a, b) => a.sortOrder - b.sortOrder).map((item) => item.dishId)
       const isPrototypeMenu =
@@ -243,6 +264,7 @@ export const useKitchenStore = defineStore('kitchen', {
       }, 0)
     },
     averageRating(state): number {
+      if (state.token) return state.stats.averageRating
       if (!state.ratings.length) return 0
       const total = state.ratings.reduce((sum, item) => sum + item.overallScore, 0)
       return Number((total / state.ratings.length).toFixed(1))
@@ -263,13 +285,13 @@ export const useKitchenStore = defineStore('kitchen', {
       if (this.hydrated) return
       const cached = uni.getStorageSync(STORAGE_KEY) as PersistedKitchenState | ''
       if (cached && typeof cached === 'object') {
-        const useCache = isCurrentRealDishCache(cached)
         this.token = cached.token || ''
         this.user = this.token ? cached.user : null
-        this.dishes = useCache ? cached.dishes : seedDishes
-        this.menu = useCache ? cached.menu || defaultMenu() : defaultMenu()
-        this.records = useCache ? cached.records || [] : defaultRecords()
-        this.ratings = useCache ? cached.ratings || [] : defaultRatings()
+        this.stats = cached.stats || defaultStats()
+        this.dishes = Array.isArray(cached.dishes) && cached.dishes.length ? cached.dishes : seedDishes
+        this.menu = cached.menu || defaultMenu()
+        this.records = cached.records || (this.token ? [] : defaultRecords())
+        this.ratings = cached.ratings || (this.token ? [] : defaultRatings())
       }
       this.hydrated = true
     },
@@ -277,6 +299,7 @@ export const useKitchenStore = defineStore('kitchen', {
       const payload: PersistedKitchenState = {
         token: this.token,
         user: this.user,
+        stats: this.stats,
         dishes: this.dishes,
         menu: this.menu,
         records: this.records,
@@ -301,26 +324,46 @@ export const useKitchenStore = defineStore('kitchen', {
       const result = await this.runRemote(() => kitchenApi.loginWithEmail(email, password))
       this.token = result.token
       this.user = result.user
-      await this.refreshDishes()
+      await this.refreshSessionData()
       this.persist()
     },
     async registerWithEmail(email: string, password = '123456') {
       const result = await this.runRemote(() => kitchenApi.registerWithEmail(email, password))
       this.token = result.token
       this.user = result.user
-      await this.refreshDishes()
+      await this.refreshSessionData()
       this.persist()
     },
     async loginWithWechat() {
       const result = await this.runRemote(() => kitchenApi.loginWithWechat('wechat-demo-openid'))
       this.token = result.token
       this.user = result.user
-      await this.refreshDishes()
+      await this.refreshSessionData()
       this.persist()
     },
     logout() {
       this.token = ''
       this.user = null
+      this.stats = defaultStats()
+      this.persist()
+    },
+    async refreshSessionData() {
+      if (!this.token) return
+      const [dishes, records, ratings, stats] = await this.runRemote(() =>
+        Promise.all([
+          kitchenApi.listDishes(this.token),
+          kitchenApi.listRecords(this.token),
+          kitchenApi.listRatings(this.token),
+          kitchenApi.getMyStats(this.token)
+        ])
+      )
+      this.dishes = dishes
+      this.records = records
+      this.ratings = ratings
+      this.stats = stats
+      if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      const repaired = repairRecordsForDishes(this.records, this.dishes)
+      if (repaired.changed) this.records = repaired.records
       this.persist()
     },
     async refreshDishes() {
@@ -328,6 +371,26 @@ export const useKitchenStore = defineStore('kitchen', {
       const dishes = await this.runRemote(() => kitchenApi.listDishes(this.token))
       this.dishes = dishes
       if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      const repaired = repairRecordsForDishes(this.records, this.dishes)
+      if (repaired.changed) this.records = repaired.records
+      this.persist()
+    },
+    async refreshStats() {
+      if (!this.token) return
+      this.stats = await this.runRemote(() => kitchenApi.getMyStats(this.token))
+      this.persist()
+    },
+    async uploadFiles(filePaths: string[]) {
+      if (!this.token) return filePaths
+      return this.runRemote(() => kitchenApi.uploadFiles(this.token, filePaths))
+    },
+    async refreshRecordsAndRatings() {
+      if (!this.token) return
+      const [records, ratings] = await this.runRemote(() =>
+        Promise.all([kitchenApi.listRecords(this.token), kitchenApi.listRatings(this.token)])
+      )
+      this.records = records
+      this.ratings = ratings
       const repaired = repairRecordsForDishes(this.records, this.dishes)
       if (repaired.changed) this.records = repaired.records
       this.persist()
@@ -365,6 +428,17 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     canEditDish(dish: Dish) {
       return canUserEditDish(dish, this.user)
+    },
+    async updateProfile(input: Pick<UserProfile, 'nickname' | 'avatarUrl'>) {
+      if (this.token) {
+        this.user = await this.runRemote(() => kitchenApi.updateProfile(this.token, input))
+        this.persist()
+        return this.user
+      }
+      if (!this.user) return null
+      this.user = { ...this.user, ...input }
+      this.persist()
+      return this.user
     },
     dishesByCategory(category: DishCategory | 'all', keyword = '', source: DishSourceFilter = 'all') {
       const normalized = keyword.trim().toLowerCase()
@@ -451,7 +525,7 @@ export const useKitchenStore = defineStore('kitchen', {
       item.finishedAt = nowText()
       this.persist()
     },
-    createCookRecord(input: {
+    async createCookRecord(input: {
       dishId: string
       menuItemId?: string
       actualMinutes: number
@@ -461,6 +535,31 @@ export const useKitchenStore = defineStore('kitchen', {
       includeInHistory: boolean
     }) {
       const menuItem = input.menuItemId ? this.menu.items.find((item) => item.id === input.menuItemId) : undefined
+      if (this.token) {
+        const pendingUploads = input.photos.filter((photo) => !photo.startsWith('/static/') && !photo.startsWith('/uploads/') && !/^https?:\/\//.test(photo))
+        let uploadedPhotos = pendingUploads
+        if (pendingUploads.length) {
+          uploadedPhotos = await this.runRemote(() => kitchenApi.uploadFiles(this.token, pendingUploads))
+        }
+        let uploadIndex = 0
+        const normalizedPhotos = input.photos.map((photo) => {
+          if (photo.startsWith('/static/') || photo.startsWith('/uploads/') || /^https?:\/\//.test(photo)) return photo
+          const next = uploadedPhotos[uploadIndex]
+          uploadIndex += 1
+          return next || photo
+        })
+        const record = await this.runRemote(() =>
+          kitchenApi.createRecord(this.token, {
+            ...input,
+            photos: normalizedPhotos
+          })
+        )
+        this.records.unshift(record)
+        if (input.menuItemId) this.completeDish(input.menuItemId)
+        await this.refreshStats()
+        this.persist()
+        return record.id
+      }
       const record: CookRecord = {
         id: makeId('record'),
         dishId: input.dishId,
@@ -478,7 +577,16 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
       return record.id
     },
-    saveRating(recordId: string, rating: Omit<Rating, 'id' | 'cookRecordId' | 'createdAt'>) {
+    async saveRating(recordId: string, rating: Omit<Rating, 'id' | 'cookRecordId' | 'createdAt'>) {
+      if (this.token) {
+        const saved = await this.runRemote(() => kitchenApi.saveRating(this.token, recordId, rating))
+        const existed = this.ratings.find((item) => item.cookRecordId === recordId)
+        if (existed) Object.assign(existed, saved)
+        else this.ratings.unshift(saved)
+        await this.refreshStats()
+        this.persist()
+        return
+      }
       const existed = this.ratings.find((item) => item.cookRecordId === recordId)
       if (existed) {
         Object.assign(existed, rating, { createdAt: nowText() })

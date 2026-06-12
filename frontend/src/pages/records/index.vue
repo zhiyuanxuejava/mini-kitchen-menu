@@ -35,6 +35,7 @@ const keyword = ref('')
 onShow(() => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else store.refreshRecordsAndRatings()
 })
 
 const records = computed(() => {

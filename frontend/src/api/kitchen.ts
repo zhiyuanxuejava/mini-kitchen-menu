@@ -1,4 +1,4 @@
-import type { Difficulty, Dish, DishCategory, DishSourceType, IngredientGroupType, UserProfile } from '@/data/types'
+import type { CookRecord, Difficulty, Dish, DishCategory, DishSourceType, IngredientGroupType, MeStats, Rating, TasteFeedback, TodayMenu, UserProfile } from '@/data/types'
 
 const DEFAULT_API_PORT = '3001'
 const PLACEHOLDER_IMAGE = '/static/assets/placeholders/png/dish_cover_placeholder.png.png'
@@ -77,6 +77,60 @@ type AuthResponse = {
   user: BackendUser
 }
 
+type BackendMenuItem = {
+  id: string
+  dishId: string
+  quantity: number
+  note: string
+  sortOrder: number
+  cookStatus: 'pending' | 'cooking' | 'done'
+  currentStep: number
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
+type BackendTodayMenu = {
+  id: string
+  menuDate: string
+  servings: number
+  status: 'draft' | 'submitted'
+  items: BackendMenuItem[]
+}
+
+type BackendCookRecord = {
+  id: string
+  dishId: string
+  menuItemId?: string | null
+  startedAt: string
+  finishedAt: string
+  actualMinutes: number
+  photos: string | string[]
+  tasteFeedback: TasteFeedback
+  note: string
+  includeInHistory: boolean
+  rating?: BackendRating | null
+}
+
+type BackendRating = {
+  id: string
+  cookRecordId: string
+  tasteScore: number
+  appearanceScore: number
+  similarityScore: number
+  heatScore: number
+  satisfactionScore: number
+  overallScore: number
+  comment: string
+  createdAt: string
+}
+
+type BackendStats = {
+  dishCount: number
+  visibleDishCount: number
+  recordCount: number
+  averageRating: number
+}
+
 function request<T>(url: string, options: RequestOptions = {}) {
   return new Promise<T>((resolve, reject) => {
     uni.request({
@@ -132,6 +186,67 @@ function normalizeUser(user: BackendUser): UserProfile {
     avatarUrl: user.avatarUrl || '/static/assets/illustrations/png/chef_avatar_256.png',
     email: user.email || undefined,
     role: user.role || 'user'
+  }
+}
+
+function parsePhotos(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeRecord(row: BackendCookRecord): CookRecord {
+  return {
+    id: row.id,
+    dishId: row.dishId,
+    menuItemId: row.menuItemId || undefined,
+    startedAt: row.startedAt,
+    finishedAt: row.finishedAt,
+    actualMinutes: row.actualMinutes,
+    photos: parsePhotos(row.photos),
+    tasteFeedback: row.tasteFeedback,
+    note: row.note,
+    includeInHistory: row.includeInHistory
+  }
+}
+
+function normalizeRating(row: BackendRating): Rating {
+  return {
+    id: row.id,
+    cookRecordId: row.cookRecordId,
+    tasteScore: row.tasteScore,
+    appearanceScore: row.appearanceScore,
+    similarityScore: row.similarityScore,
+    heatScore: row.heatScore,
+    satisfactionScore: row.satisfactionScore,
+    overallScore: row.overallScore,
+    comment: row.comment,
+    createdAt: row.createdAt
+  }
+}
+
+function normalizeMenu(row: BackendTodayMenu): TodayMenu {
+  return {
+    id: row.id,
+    menuDate: row.menuDate,
+    servings: row.servings,
+    status: row.status,
+    items: (row.items || []).map((item) => ({
+      id: item.id,
+      dishId: item.dishId,
+      quantity: item.quantity,
+      note: item.note,
+      sortOrder: item.sortOrder,
+      cookStatus: item.cookStatus,
+      currentStep: item.currentStep,
+      startedAt: item.startedAt || undefined,
+      finishedAt: item.finishedAt || undefined
+    }))
   }
 }
 
@@ -233,5 +348,84 @@ export const kitchenApi = {
       data: input
     })
     return normalizeDish(row)
+  },
+  async getTodayMenu(token: string) {
+    const row = await request<BackendTodayMenu>('/menus/today', { token })
+    return normalizeMenu(row)
+  },
+  async getMyStats(token: string) {
+    return request<MeStats>('/me/stats', { token })
+  },
+  async listRecords(token: string) {
+    const rows = await request<BackendCookRecord[]>('/records', { token })
+    return rows.map(normalizeRecord)
+  },
+  async listRatings(token: string) {
+    const rows = await request<BackendRating[]>('/ratings/me', { token })
+    return rows.map(normalizeRating)
+  },
+  async updateProfile(token: string, input: Pick<UserProfile, 'nickname' | 'avatarUrl'>) {
+    const row = await request<BackendUser>('/me/profile', {
+      method: 'PUT',
+      token,
+      data: input
+    })
+    return normalizeUser(row)
+  },
+  async uploadFiles(token: string, filePaths: string[]) {
+    return new Promise<string[]>((resolve, reject) => {
+      const uploaded: string[] = []
+      const files = filePaths.slice()
+
+      const next = () => {
+        const filePath = files.shift()
+        if (!filePath) {
+          resolve(uploaded)
+          return
+        }
+        uni.uploadFile({
+          url: `${apiBase}/uploads`,
+          filePath,
+          name: 'files',
+          header: { Authorization: `Bearer ${token}` },
+          success: (response) => {
+            try {
+              const data = JSON.parse(response.data) as { files?: Array<{ url: string }> }
+              const url = data.files?.[0]?.url
+              if (url) uploaded.push(url)
+              next()
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error('上传响应解析失败'))
+            }
+          },
+          fail: (error) => reject(new Error(error.errMsg || '上传失败'))
+        })
+      }
+
+      next()
+    })
+  },
+  async createRecord(
+    token: string,
+    input: Pick<CookRecord, 'dishId' | 'menuItemId' | 'actualMinutes' | 'photos' | 'tasteFeedback' | 'note' | 'includeInHistory'>
+  ) {
+    const row = await request<BackendCookRecord>('/records', {
+      method: 'POST',
+      token,
+      data: input
+    })
+    return normalizeRecord(row)
+  },
+  async saveRating(
+    token: string,
+    recordId: string,
+    input: Omit<Rating, 'id' | 'cookRecordId' | 'createdAt' | 'overallScore'> & { overallScore?: number }
+  ) {
+    const row = await request<BackendRating>(`/records/${recordId}/rating`, {
+      method: 'POST',
+      token,
+      data: input
+    })
+    return normalizeRating(row)
   }
 }
