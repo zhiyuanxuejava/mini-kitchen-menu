@@ -20,7 +20,7 @@
         <image :src="icons.clock" mode="aspectFit" />
         <text>时间</text>
       </view>
-      <text>{{ step.timeLabel || `${step.minutes} 分钟` }}</text>
+      <text class="time-value">{{ step.timeLabel || `${step.minutes} 分钟` }}</text>
     </view>
     <view class="tip">
       <view class="info-left">
@@ -105,8 +105,9 @@ defineProps<{
   color: $primary;
 }
 
-.time > text {
+.time-value {
   color: $success;
+  font-weight: 900;
 }
 
 .info-left {

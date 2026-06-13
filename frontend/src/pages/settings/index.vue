@@ -13,7 +13,7 @@
         </view>
       </view>
       <button class="hero-avatar" hover-class="tap" @tap="goEditProfile">
-        <image class="hero-art" :src="store.user?.avatarUrl || icons.avatar" mode="aspectFill" />
+        <UserAvatar class="hero-art" :src="store.user?.avatarUrl || icons.avatar" />
         <text>编辑</text>
       </button>
     </view>
@@ -140,6 +140,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 

@@ -2,6 +2,7 @@ import type { CookRecord, Difficulty, Dish, DishCategory, DishSourceType, Ingred
 
 const DEFAULT_API_PORT = '3001'
 const PLACEHOLDER_IMAGE = '/static/assets/placeholders/png/dish_cover_placeholder.png.png'
+const DEFAULT_AVATAR = '/static/assets/illustrations/png/chef_avatar_256.png'
 
 function resolveApiBase() {
   const configured = import.meta.env.VITE_API_BASE
@@ -179,11 +180,37 @@ function emojiFor(category: DishCategory, name: string) {
   return '🍽️'
 }
 
+function isAbsoluteMediaUrl(value: string) {
+  return /^https?:\/\//.test(value) || value.startsWith('data:')
+}
+
+export function normalizeUserAvatarUrl(value?: string | null) {
+  const next = value?.trim()
+  if (!next) return DEFAULT_AVATAR
+  if (isAbsoluteMediaUrl(next)) return next
+  if (next.startsWith('/uploads/')) return `${apiBase}${next}`
+  return next
+}
+
+export function isTemporaryFilePath(value?: string | null) {
+  const next = value?.trim()
+  if (!next) return false
+  return !next.startsWith('/static/') && !next.startsWith('/uploads/') && !isAbsoluteMediaUrl(next)
+}
+
+function serializeUserAvatarUrl(value?: string | null) {
+  const next = value?.trim()
+  if (!next) return undefined
+  const uploadBase = `${apiBase}/uploads/`
+  if (next.startsWith(uploadBase)) return next.slice(apiBase.length)
+  return next
+}
+
 function normalizeUser(user: BackendUser): UserProfile {
   return {
     id: user.id,
     nickname: user.nickname,
-    avatarUrl: user.avatarUrl || '/static/assets/illustrations/png/chef_avatar_256.png',
+    avatarUrl: normalizeUserAvatarUrl(user.avatarUrl),
     email: user.email || undefined,
     role: user.role || 'user'
   }
@@ -365,10 +392,14 @@ export const kitchenApi = {
     return rows.map(normalizeRating)
   },
   async updateProfile(token: string, input: Pick<UserProfile, 'nickname' | 'avatarUrl'>) {
+    const avatarUrl = serializeUserAvatarUrl(input.avatarUrl)
     const row = await request<BackendUser>('/me/profile', {
       method: 'PUT',
       token,
-      data: input
+      data: {
+        nickname: input.nickname,
+        ...(avatarUrl ? { avatarUrl } : {})
+      }
     })
     return normalizeUser(row)
   },
@@ -392,7 +423,11 @@ export const kitchenApi = {
             try {
               const data = JSON.parse(response.data) as { files?: Array<{ url: string }> }
               const url = data.files?.[0]?.url
-              if (url) uploaded.push(url)
+              if (!url) {
+                reject(new Error('上传成功但未返回文件地址'))
+                return
+              }
+              uploaded.push(url)
               next()
             } catch (error) {
               reject(error instanceof Error ? error : new Error('上传响应解析失败'))

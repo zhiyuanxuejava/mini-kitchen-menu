@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { kitchenApi } from '@/api/kitchen'
+import { kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { seedDishes } from '@/data/seed'
 import type {
@@ -8,6 +8,8 @@ import type {
   Dish,
   DishCategory,
   DishSourceType,
+  KitchenTimer,
+  KitchenTimerContextType,
   MeStats,
   MenuItem,
   Rating,
@@ -27,6 +29,100 @@ const LEGACY_DISH_NAMES: Record<string, string> = {
 }
 const MIN_REAL_DISH_COUNT = 50
 type DishSourceFilter = DishSourceType | 'all'
+type DishSearchRow = { dish: Dish; score: number }
+type DishSearchField = { text: string; weight: number }
+
+function normalizeSearchText(value: string) {
+  return value.toLowerCase().replace(/[\s\-_/|,.;:]+/g, '')
+}
+
+function splitSearchTokens(keyword: string) {
+  return keyword
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((item) => normalizeSearchText(item))
+    .filter(Boolean)
+}
+
+function isSubsequenceMatch(text: string, keyword: string) {
+  let index = 0
+  for (const char of text) {
+    if (char !== keyword[index]) continue
+    index += 1
+    if (index >= keyword.length) return true
+  }
+  return false
+}
+
+function fieldMatchScore(text: string, keyword: string) {
+  const normalizedText = normalizeSearchText(text)
+  if (!normalizedText || !keyword) return 0
+  if (normalizedText === keyword) return 120
+  if (normalizedText.startsWith(keyword)) return 90
+  if (normalizedText.includes(keyword)) return 70
+  return isSubsequenceMatch(normalizedText, keyword) ? 36 : 0
+}
+
+function dishSearchFields(dish: Dish): DishSearchField[] {
+  return [
+    { text: dish.name, weight: 5 },
+    { text: dish.description, weight: 2 },
+    ...dish.tasteTags.map((text) => ({ text, weight: 2 })),
+    ...dish.ingredients.map((item) => ({ text: item.name, weight: 4 })),
+    ...dish.steps.flatMap((step) => [
+      { text: step.title, weight: 2 },
+      { text: step.description, weight: 1 }
+    ]),
+    ...dish.tips.map((text) => ({ text, weight: 1 }))
+  ]
+}
+
+function dishSearchScore(dish: Dish, keyword: string) {
+  const tokens = splitSearchTokens(keyword)
+  if (!tokens.length) return 0
+
+  const fields = dishSearchFields(dish)
+  let total = 0
+  for (const token of tokens) {
+    let best = 0
+    for (const field of fields) {
+      const score = fieldMatchScore(field.text, token) * field.weight
+      if (score > best) best = score
+    }
+    if (!best) return 0
+    total += best
+  }
+
+  total += fieldMatchScore(dish.name, normalizeSearchText(keyword)) * 2
+  total += Math.min(dish.ratingCount || 0, 20)
+  return total
+}
+
+function compareDishSearchRows(left: DishSearchRow, right: DishSearchRow) {
+  if (right.score !== left.score) return right.score - left.score
+  if ((right.dish.rating || 0) !== (left.dish.rating || 0)) return (right.dish.rating || 0) - (left.dish.rating || 0)
+  if ((right.dish.ratingCount || 0) !== (left.dish.ratingCount || 0)) return (right.dish.ratingCount || 0) - (left.dish.ratingCount || 0)
+  if (left.dish.estimatedMinutes !== right.dish.estimatedMinutes) return left.dish.estimatedMinutes - right.dish.estimatedMinutes
+  return left.dish.name.localeCompare(right.dish.name)
+}
+
+interface KitchenTimerTickerStore {
+  kitchenTimer: KitchenTimer
+  finishKitchenTimer: () => void
+}
+
+let kitchenTimerTicker: ReturnType<typeof setInterval> | undefined
+
+function ensureKitchenTimerTicker(store: KitchenTimerTickerStore) {
+  if (kitchenTimerTicker) return
+
+  kitchenTimerTicker = setInterval(() => {
+    if (store.kitchenTimer.status !== 'running' || !store.kitchenTimer.endAt) return
+    if (store.kitchenTimer.endAt > Date.now()) return
+    store.finishKitchenTimer()
+  }, 1000)
+}
 
 interface KitchenState {
   hydrated: boolean
@@ -39,6 +135,7 @@ interface KitchenState {
   menu: TodayMenu
   records: CookRecord[]
   ratings: Rating[]
+  kitchenTimer: KitchenTimer
 }
 
 interface PersistedKitchenState {
@@ -49,6 +146,88 @@ interface PersistedKitchenState {
   menu: TodayMenu
   records: CookRecord[]
   ratings: Rating[]
+  kitchenTimer?: KitchenTimer
+}
+
+function defaultKitchenTimer(): KitchenTimer {
+  return {
+    status: 'idle',
+    durationMs: 15 * 60 * 1000,
+    remainingMs: 15 * 60 * 1000,
+    alertPending: false,
+    context: { type: 'manual' }
+  }
+}
+
+function normalizeKitchenTimer(timer?: KitchenTimer | null): KitchenTimer {
+  if (!timer || typeof timer !== 'object') return defaultKitchenTimer()
+
+  const durationMs = Math.max(60 * 1000, Number(timer.durationMs) || defaultKitchenTimer().durationMs)
+  const fallbackRemaining = Math.max(0, Math.min(durationMs, Number(timer.remainingMs) || durationMs))
+  const endAt = typeof timer.endAt === 'number' ? timer.endAt : undefined
+
+  if (timer.status === 'running' && endAt) {
+    const remainingMs = Math.max(0, endAt - Date.now())
+    if (remainingMs > 0) {
+      return {
+        status: 'running' as const,
+        durationMs,
+        remainingMs,
+        endAt,
+        lastFinishedAt: timer.lastFinishedAt,
+        alertPending: Boolean(timer.alertPending),
+        context: timer.context || { type: 'manual' }
+      }
+    }
+
+    return {
+      status: 'finished' as const,
+      durationMs,
+      remainingMs: 0,
+      lastFinishedAt: Date.now(),
+      alertPending: true,
+      context: timer.context || { type: 'manual' }
+    }
+  }
+
+  if (timer.status === 'paused') {
+    return {
+      status: 'paused',
+      durationMs,
+      remainingMs: fallbackRemaining,
+      lastFinishedAt: timer.lastFinishedAt,
+      alertPending: false,
+      context: timer.context || { type: 'manual' }
+    }
+  }
+
+  if (timer.status === 'finished') {
+    return {
+      status: 'finished',
+      durationMs,
+      remainingMs: 0,
+      lastFinishedAt: timer.lastFinishedAt || Date.now(),
+      alertPending: Boolean(timer.alertPending),
+      context: timer.context || { type: 'manual' }
+    }
+  }
+
+  return {
+    status: 'idle',
+    durationMs,
+    remainingMs: durationMs,
+    lastFinishedAt: timer.lastFinishedAt,
+    alertPending: false,
+    context: timer.context || { type: 'manual' }
+  }
+}
+
+function normalizeCachedUser(user: UserProfile | null) {
+  if (!user) return null
+  return {
+    ...user,
+    avatarUrl: normalizeUserAvatarUrl(user.avatarUrl)
+  }
 }
 
 function todayText() {
@@ -214,7 +393,8 @@ function initialState(): Omit<KitchenState, 'hydrated'> {
     dishes: seedDishes,
     menu: defaultMenu(),
     records: defaultRecords(),
-    ratings: defaultRatings()
+    ratings: defaultRatings(),
+    kitchenTimer: defaultKitchenTimer()
   }
 }
 
@@ -278,6 +458,10 @@ export const useKitchenStore = defineStore('kitchen', {
           rating: state.ratings.find((rating) => rating.cookRecordId === record.id)
         }))
         .filter((record) => record.dish)
+    },
+    kitchenTimerRemaining(state) {
+      if (state.kitchenTimer.status !== 'running' || !state.kitchenTimer.endAt) return state.kitchenTimer.remainingMs
+      return Math.max(0, state.kitchenTimer.endAt - Date.now())
     }
   },
   actions: {
@@ -286,14 +470,17 @@ export const useKitchenStore = defineStore('kitchen', {
       const cached = uni.getStorageSync(STORAGE_KEY) as PersistedKitchenState | ''
       if (cached && typeof cached === 'object') {
         this.token = cached.token || ''
-        this.user = this.token ? cached.user : null
+        this.user = this.token ? normalizeCachedUser(cached.user) : null
         this.stats = cached.stats || defaultStats()
         this.dishes = Array.isArray(cached.dishes) && cached.dishes.length ? cached.dishes : seedDishes
         this.menu = cached.menu || defaultMenu()
         this.records = cached.records || (this.token ? [] : defaultRecords())
         this.ratings = cached.ratings || (this.token ? [] : defaultRatings())
+        this.kitchenTimer = normalizeKitchenTimer(cached.kitchenTimer)
       }
       this.hydrated = true
+      this.syncKitchenTimer()
+      ensureKitchenTimerTicker(this)
     },
     persist() {
       const payload: PersistedKitchenState = {
@@ -303,9 +490,139 @@ export const useKitchenStore = defineStore('kitchen', {
         dishes: this.dishes,
         menu: this.menu,
         records: this.records,
-        ratings: this.ratings
+        ratings: this.ratings,
+        kitchenTimer: this.kitchenTimer
       }
       uni.setStorageSync(STORAGE_KEY, payload)
+    },
+    syncKitchenTimer() {
+      const next = normalizeKitchenTimer(this.kitchenTimer)
+      const changed =
+        next.status !== this.kitchenTimer.status ||
+        next.durationMs !== this.kitchenTimer.durationMs ||
+        next.remainingMs !== this.kitchenTimer.remainingMs ||
+        next.endAt !== this.kitchenTimer.endAt ||
+        next.lastFinishedAt !== this.kitchenTimer.lastFinishedAt
+
+      if (!changed) return
+      this.kitchenTimer = next
+      this.persist()
+    },
+    setKitchenTimerDuration(minutes: number) {
+      const durationMs = Math.max(60 * 1000, Math.round(Number(minutes) || 0) * 60 * 1000)
+      if (this.kitchenTimer.status === 'running') {
+        this.kitchenTimer = {
+          status: 'running',
+          durationMs,
+          remainingMs: durationMs,
+          endAt: Date.now() + durationMs,
+          alertPending: false,
+          context: this.kitchenTimer.context || { type: 'manual' }
+        }
+        this.persist()
+        return
+      }
+
+      const status = this.kitchenTimer.status === 'paused' ? 'paused' : 'idle'
+      this.kitchenTimer = {
+        status,
+        durationMs,
+        remainingMs: status === 'paused' ? Math.min(this.kitchenTimer.remainingMs, durationMs) : durationMs,
+        lastFinishedAt: this.kitchenTimer.lastFinishedAt,
+        alertPending: false,
+        context: this.kitchenTimer.context || { type: 'manual' }
+      }
+      this.persist()
+    },
+    startKitchenTimer(
+      minutes?: number,
+      context: KitchenTimer['context'] = { type: 'manual' }
+    ) {
+      const durationMs = Math.max(
+        60 * 1000,
+        typeof minutes === 'number' ? Math.round(minutes) * 60 * 1000 : this.kitchenTimer.durationMs || defaultKitchenTimer().durationMs
+      )
+      this.kitchenTimer = {
+        status: 'running',
+        durationMs,
+        remainingMs: durationMs,
+        endAt: Date.now() + durationMs,
+        alertPending: false,
+        context
+      }
+      ensureKitchenTimerTicker(this)
+      this.persist()
+    },
+    startStepKitchenTimer(itemId: string, minutes: number) {
+      const item = this.menu.items.find((candidate) => candidate.id === itemId)
+      const dish = item ? this.getDish(item.dishId) : undefined
+      const step = item && dish ? dish.steps[(item.currentStep || 1) - 1] : undefined
+
+      this.startKitchenTimer(minutes, {
+        type: 'step',
+        itemId,
+        dishId: dish?.id,
+        dishName: dish?.name,
+        stepNo: step?.stepNo || item?.currentStep,
+        stepTitle: step?.title
+      })
+    },
+    pauseKitchenTimer() {
+      if (this.kitchenTimer.status !== 'running') return
+      const remainingMs = this.kitchenTimer.endAt ? Math.max(0, this.kitchenTimer.endAt - Date.now()) : this.kitchenTimer.remainingMs
+      this.kitchenTimer = {
+        status: remainingMs > 0 ? 'paused' : 'finished',
+        durationMs: this.kitchenTimer.durationMs,
+        remainingMs,
+        lastFinishedAt: remainingMs > 0 ? this.kitchenTimer.lastFinishedAt : Date.now(),
+        alertPending: remainingMs <= 0,
+        context: this.kitchenTimer.context || { type: 'manual' }
+      }
+      this.persist()
+    },
+    resumeKitchenTimer() {
+      const remainingMs = Math.max(0, this.kitchenTimer.remainingMs)
+      if (this.kitchenTimer.status !== 'paused' || !remainingMs) return
+      this.kitchenTimer = {
+        status: 'running',
+        durationMs: this.kitchenTimer.durationMs,
+        remainingMs,
+        endAt: Date.now() + remainingMs,
+        lastFinishedAt: this.kitchenTimer.lastFinishedAt,
+        alertPending: false,
+        context: this.kitchenTimer.context || { type: 'manual' }
+      }
+      ensureKitchenTimerTicker(this)
+      this.persist()
+    },
+    resetKitchenTimer() {
+      this.kitchenTimer = {
+        status: 'idle',
+        durationMs: this.kitchenTimer.durationMs,
+        remainingMs: this.kitchenTimer.durationMs,
+        alertPending: false,
+        context: this.kitchenTimer.context || { type: 'manual' }
+      }
+      this.persist()
+    },
+    finishKitchenTimer() {
+      this.kitchenTimer = {
+        status: 'finished',
+        durationMs: this.kitchenTimer.durationMs,
+        remainingMs: 0,
+        lastFinishedAt: Date.now(),
+        alertPending: true,
+        context: this.kitchenTimer.context || { type: 'manual' }
+      }
+      this.persist()
+    },
+    acknowledgeKitchenTimerAlert() {
+      if (!this.kitchenTimer.alertPending) return
+      this.kitchenTimer = {
+        ...this.kitchenTimer,
+        alertPending: false
+      }
+      this.persist()
     },
     async runRemote<T>(task: () => Promise<T>) {
       this.loading = true
@@ -441,13 +758,36 @@ export const useKitchenStore = defineStore('kitchen', {
       return this.user
     },
     dishesByCategory(category: DishCategory | 'all', keyword = '', source: DishSourceFilter = 'all') {
-      const normalized = keyword.trim().toLowerCase()
-      return this.dishes.filter((dish) => {
-        const matchCategory = category === 'all' || dish.category === category
-        const matchSource = source === 'all' || sourceTypeOf(dish) === source
-        const haystack = [dish.name, dish.description, ...dish.tasteTags, ...dish.ingredients.map((item) => item.name)].join(' ').toLowerCase()
-        return matchCategory && matchSource && (!normalized || haystack.includes(normalized))
-      })
+      const normalized = keyword.trim()
+      const rows = this.dishes
+        .filter((dish) => {
+          const matchCategory = category === 'all' || dish.category === category
+          const matchSource = source === 'all' || sourceTypeOf(dish) === source
+          return matchCategory && matchSource
+        })
+        .map((dish) => ({
+          dish,
+          score: normalized ? dishSearchScore(dish, normalized) : 0
+        }))
+        .filter((row) => !normalized || row.score > 0)
+
+      if (!normalized) return rows.map((row) => row.dish)
+      return rows.sort(compareDishSearchRows).map((row) => row.dish)
+    },
+    dishSearchCandidates(keyword: string, source: DishSourceFilter = 'all', limit = 8) {
+      const normalized = keyword.trim()
+      if (!normalized) return [] as Dish[]
+
+      return this.dishes
+        .filter((dish) => source === 'all' || sourceTypeOf(dish) === source)
+        .map((dish) => ({
+          dish,
+          score: dishSearchScore(dish, normalized)
+        }))
+        .filter((row) => row.score > 0)
+        .sort(compareDishSearchRows)
+        .slice(0, limit)
+        .map((row) => row.dish)
     },
     addToMenu(dishId: string) {
       const existed = this.menu.items.find((item) => item.dishId === dishId)

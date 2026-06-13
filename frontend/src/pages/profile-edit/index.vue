@@ -4,8 +4,8 @@
 
     <view class="hero card">
       <button class="avatar-wrap" hover-class="tap" @tap="chooseAvatar">
-        <image class="avatar" :src="avatarPreview" mode="aspectFill" />
-        <view class="avatar-mask">更换头像</view>
+        <UserAvatar class="avatar" :src="avatarPreview" />
+        <view class="avatar-mask">{{ uploading ? '上传头像中...' : '更换头像' }}</view>
       </button>
       <view class="hero-copy">
         <text class="hero-title">{{ nickname || '请输入昵称' }}</text>
@@ -13,6 +13,7 @@
         <view class="hero-tags">
           <text class="pill">{{ roleLabel }}</text>
           <text class="pill green">资料实时同步</text>
+          <text v-if="pendingUpload" class="pill amber">待上传</text>
         </view>
       </view>
     </view>
@@ -48,12 +49,16 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { isTemporaryFilePath } from '@/api/kitchen'
+import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 
 const store = useKitchenStore()
 const nickname = ref('')
-const avatarPreview = ref('')
+const avatarPreview = ref(icons.avatar)
 const saving = ref(false)
+const uploading = ref(false)
 
 onShow(() => {
   store.hydrate()
@@ -62,10 +67,11 @@ onShow(() => {
     return
   }
   nickname.value = store.user.nickname || ''
-  avatarPreview.value = store.user.avatarUrl || ''
+  avatarPreview.value = store.user.avatarUrl || icons.avatar
 })
 
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
+const pendingUpload = computed(() => isTemporaryFilePath(avatarPreview.value))
 
 function chooseAvatar() {
   uni.chooseImage({
@@ -82,19 +88,25 @@ async function save() {
     uni.showToast({ title: '请输入昵称', icon: 'none' })
     return
   }
+  if (!store.user) return
   saving.value = true
   try {
     let avatarUrl = avatarPreview.value
-    if (avatarUrl && !avatarUrl.startsWith('/static/') && !avatarUrl.startsWith('/uploads/') && !/^https?:\/\//.test(avatarUrl)) {
+    if (isTemporaryFilePath(avatarUrl)) {
+      uploading.value = true
       const [uploaded] = await store.uploadFiles([avatarUrl])
-      avatarUrl = uploaded || avatarUrl
+      uploading.value = false
+      avatarUrl = uploaded
+      avatarPreview.value = uploaded
     }
     await store.updateProfile({ nickname: nextName, avatarUrl })
     uni.showToast({ title: '资料已保存', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 400)
   } catch {
+    avatarPreview.value = store.user.avatarUrl || icons.avatar
     uni.showToast({ title: store.apiError || '保存失败', icon: 'none' })
   } finally {
+    uploading.value = false
     saving.value = false
   }
 }
@@ -172,6 +184,25 @@ async function save() {
   flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 18rpx;
+}
+
+.pill {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 132, 48, 0.12);
+  color: $primary;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.pill.green {
+  background: rgba(89, 179, 71, 0.12);
+  color: $success;
+}
+
+.pill.amber {
+  background: rgba(255, 176, 32, 0.16);
+  color: #b96a00;
 }
 
 .form,

@@ -2,10 +2,6 @@
   <AppPage>
     <view class="cook-head">
       <text class="title-xl">今日做菜台 👨‍🍳</text>
-      <button class="timer" hover-class="tap" @tap="timerToast">
-        <image :src="icons.timer" mode="aspectFit" />
-        <text>厨房计时器</text>
-      </button>
     </view>
 
     <view class="status-tabs">
@@ -45,37 +41,62 @@ import BottomTabbar from '@/components/BottomTabbar.vue'
 import CookDishCard from '@/components/CookDishCard.vue'
 import CookStatusCard from '@/components/CookStatusCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { icons } from '@/data/assets'
 import type { CookStatus } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 
 const store = useKitchenStore()
-const active = ref<CookStatus>('cooking')
+const active = ref<CookStatus>('pending')
 const tabs = [
   { key: 'pending', label: '待制作' },
   { key: 'cooking', label: '制作中' },
   { key: 'done', label: '已完成' }
 ] as const
 
-onShow(() => {
+onShow(async () => {
   store.hydrate()
-  if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
-  else store.refreshSessionData()
+  store.syncKitchenTimer()
+  syncActiveTab()
+  if (!store.user) {
+    uni.reLaunch({ url: '/pages/login/index' })
+    return
+  }
+  try {
+    await store.refreshSessionData()
+  } finally {
+    syncActiveTab()
+  }
 })
 
-const visibleItems = computed(() => store.menuDishes)
+const visibleItems = computed(() => store.menuDishes.filter((item) => item.cookStatus === active.value))
 
 function handleAction(itemId: string, status: CookStatus) {
   if (status === 'done') {
+    active.value = 'done'
     uni.navigateTo({ url: `/pages/upload/index?itemId=${itemId}` })
     return
   }
+  active.value = 'cooking'
   if (status === 'pending') store.setCookStatus(itemId, 'cooking')
   uni.navigateTo({ url: `/pages/cook-step/index?itemId=${itemId}` })
 }
 
-function timerToast() {
-  uni.showToast({ title: '计时器入口已预留', icon: 'none' })
+function countByStatus(status: CookStatus) {
+  if (status === 'pending') return store.pendingCount
+  if (status === 'cooking') return store.cookingCount
+  return store.doneCount
+}
+
+function syncActiveTab() {
+  if (countByStatus(active.value) > 0) return
+  if (store.pendingCount > 0) {
+    active.value = 'pending'
+    return
+  }
+  if (store.cookingCount > 0) {
+    active.value = 'cooking'
+    return
+  }
+  active.value = 'done'
 }
 </script>
 
@@ -83,32 +104,11 @@ function timerToast() {
 .cook-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
   margin: 28rpx 0 28rpx;
 }
 
 .title-xl {
   font-size: 48rpx;
-}
-
-.timer {
-  height: 62rpx;
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  padding: 0 20rpx;
-  border: 1rpx solid #ffd0b7;
-  border-radius: 999rpx;
-  background: #fff6ef;
-  color: $primary;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.timer image {
-  width: 34rpx;
-  height: 34rpx;
 }
 
 .status-tabs {

@@ -13,7 +13,7 @@
     </view>
 
     <view class="profile card">
-      <image class="avatar" :src="store.user?.avatarUrl || icons.avatar" mode="aspectFill" />
+      <UserAvatar class="avatar" :src="store.user?.avatarUrl || icons.avatar" />
       <view class="profile-copy">
         <text class="nickname">{{ displayName }}</text>
         <text>记录每一次下厨</text>
@@ -79,6 +79,7 @@ import { onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
 import SectionTitle from '@/components/SectionTitle.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 

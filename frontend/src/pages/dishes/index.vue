@@ -4,9 +4,41 @@
       <text class="title-xl">我的<text class="accent">菜品库</text></text>
       <image :src="icons.basket" mode="aspectFit" />
     </view>
-    <view class="search-box">
-      <image :src="icons.search" class="icon-36" mode="aspectFit" />
-      <input v-model="keyword" placeholder="搜索菜名 / 食材 / 做法" />
+    <view class="search-wrap">
+      <view class="search-box" :class="{ active: showSuggestions }">
+        <image :src="icons.search" class="icon-36" mode="aspectFit" />
+        <input
+          v-model="keyword"
+          placeholder="搜索菜名 / 食材 / 做法"
+          confirm-type="search"
+          @focus="onSearchFocus"
+          @blur="onSearchBlur"
+          @input="onKeywordInput"
+          @confirm="onSearchConfirm"
+        />
+        <button v-if="keyword" class="clear-search" hover-class="tap" @tap="clearKeyword">×</button>
+      </view>
+      <view v-if="selectedSuggestion" class="selected-tip">
+        <text>已选择：{{ selectedSuggestion.name }}</text>
+        <button hover-class="tap" @tap="clearSelectedSuggestion">重新搜索</button>
+      </view>
+      <view v-else-if="showSuggestions" class="search-suggestions card">
+        <button
+          v-for="dish in searchSuggestions"
+          :key="dish.id"
+          class="suggestion-item"
+          hover-class="tap"
+          @mousedown.prevent
+          @tap="selectSuggestion(dish)"
+        >
+          <image class="suggestion-thumb" :src="dish.coverImage" mode="aspectFill" />
+          <view class="suggestion-copy">
+            <text class="suggestion-name line-clamp-1">{{ dish.name }}</text>
+            <text class="suggestion-meta line-clamp-1">{{ dish.description || `${dish.estimatedMinutes} 分钟 · ${dish.difficulty}` }}</text>
+          </view>
+          <text class="suggestion-action">选择</text>
+        </button>
+      </view>
     </view>
 
     <view class="filter-row card">
@@ -64,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
@@ -81,6 +113,8 @@ type SortDirection = 'asc' | 'desc'
 
 const store = useKitchenStore()
 const keyword = ref('')
+const searchFocused = ref(false)
+const selectedSuggestionId = ref('')
 const activeCategory = ref<DishCategory | 'all'>('all')
 const activeDifficulty = ref<DifficultyFilter>('all')
 const sortKey = ref<SortKey>('default')
@@ -107,6 +141,12 @@ const activeCategoryIndex = computed(() => Math.max(0, categories.findIndex((ite
 const activeCategoryLabel = computed(() => categoryLabels[activeCategory.value])
 const activeDifficultyIndex = computed(() => Math.max(0, difficulties.findIndex((item) => item === activeDifficulty.value)))
 const activeDifficultyLabel = computed(() => (activeDifficulty.value === 'all' ? '难度' : activeDifficulty.value))
+const selectedSuggestion = computed(() => (selectedSuggestionId.value ? store.getDish(selectedSuggestionId.value) : undefined))
+const searchSuggestions = computed(() => {
+  if (!keyword.value.trim() || selectedSuggestionId.value) return []
+  return store.dishSearchCandidates(keyword.value)
+})
+const showSuggestions = computed(() => searchFocused.value && !selectedSuggestionId.value && searchSuggestions.value.length > 0)
 const activeFilters = computed(() => {
   const rows: Array<{ key: string; label: string; clear: () => void }> = []
   if (activeDifficulty.value !== 'all') rows.push({ key: 'difficulty', label: `难度：${activeDifficulty.value}`, clear: () => (activeDifficulty.value = 'all') })
@@ -115,11 +155,23 @@ const activeFilters = computed(() => {
   return rows
 })
 const dishes = computed(() => {
+  if (selectedSuggestion.value) {
+    const matchDifficulty = activeDifficulty.value === 'all' || selectedSuggestion.value.difficulty === activeDifficulty.value
+    const matchCategory = activeCategory.value === 'all' || selectedSuggestion.value.category === activeCategory.value
+    return matchDifficulty && matchCategory ? [selectedSuggestion.value] : []
+  }
+
   const rows = store
     .dishesByCategory(activeCategory.value, keyword.value, 'all')
     .filter((dish) => activeDifficulty.value === 'all' || dish.difficulty === activeDifficulty.value)
 
   return sortDishes(rows)
+})
+
+watch(keyword, (value, oldValue) => {
+  if (selectedSuggestionId.value && value !== selectedSuggestion.value?.name && value !== oldValue) {
+    selectedSuggestionId.value = ''
+  }
 })
 
 function onCategoryChange(event: { detail: { value: string | number } }) {
@@ -130,6 +182,41 @@ function onCategoryChange(event: { detail: { value: string | number } }) {
 function onDifficultyChange(event: { detail: { value: string | number } }) {
   const index = Number(event.detail.value)
   activeDifficulty.value = difficulties[index] || 'all'
+}
+
+function onSearchFocus() {
+  searchFocused.value = true
+}
+
+function onSearchBlur() {
+  setTimeout(() => {
+    searchFocused.value = false
+  }, 120)
+}
+
+function onKeywordInput() {
+  if (!keyword.value.trim()) selectedSuggestionId.value = ''
+}
+
+function onSearchConfirm() {
+  const first = searchSuggestions.value[0]
+  if (first) selectSuggestion(first)
+}
+
+function selectSuggestion(dish: Dish) {
+  selectedSuggestionId.value = dish.id
+  keyword.value = dish.name
+  searchFocused.value = false
+}
+
+function clearKeyword() {
+  keyword.value = ''
+  selectedSuggestionId.value = ''
+}
+
+function clearSelectedSuggestion() {
+  selectedSuggestionId.value = ''
+  searchFocused.value = true
 }
 
 function toggleSort(key: Exclude<SortKey, 'default'>) {
@@ -201,11 +288,145 @@ function goCreate() {
   margin-top: 8rpx;
 }
 
+.search-wrap {
+  position: relative;
+  z-index: 3;
+}
+
+.search-box {
+  position: relative;
+}
+
+.search-box.active {
+  border-color: rgba(255, 123, 37, 0.32);
+  box-shadow: 0 14rpx 28rpx rgba(255, 123, 37, 0.12);
+}
+
 .search-box input {
   flex: 1;
   height: 68rpx;
   color: $text-main;
   font-size: 28rpx;
+}
+
+.clear-search,
+.search-box .clear-search,
+.search-box uni-button.clear-search {
+  width: 42rpx;
+  min-width: 42rpx;
+  height: 42rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(163, 154, 147, 0.14);
+  color: $text-sub;
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.clear-search::after,
+.search-box .clear-search::after {
+  border: 0;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 12rpx);
+  left: 0;
+  right: 0;
+  padding: 10rpx 0;
+  border-radius: 24rpx;
+}
+
+.suggestion-item,
+.search-suggestions .suggestion-item,
+.search-suggestions uni-button.suggestion-item {
+  width: 100%;
+  min-height: 108rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin: 0;
+  padding: 18rpx 22rpx;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.suggestion-item::after,
+.search-suggestions .suggestion-item::after {
+  border: 0;
+}
+
+.suggestion-item + .suggestion-item {
+  border-top: 1rpx solid rgba(231, 223, 218, 0.9);
+}
+
+.suggestion-thumb {
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 auto;
+  border-radius: 18rpx;
+  background: #f6efe9;
+}
+
+.suggestion-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.suggestion-name {
+  color: $text-main;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.suggestion-meta {
+  color: $text-sub;
+  font-size: 22rpx;
+}
+
+.suggestion-action {
+  flex: 0 0 auto;
+  color: $primary;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.selected-tip {
+  margin: 14rpx 8rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+}
+
+.selected-tip button,
+.selected-tip uni-button {
+  min-width: 0;
+  height: 46rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: #fff7ef;
+  color: $primary;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.selected-tip button::after,
+.selected-tip uni-button::after {
+  border: 0;
 }
 
 .filter-row {

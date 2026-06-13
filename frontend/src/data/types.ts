@@ -4,6 +4,8 @@ export type Difficulty = '简单' | '中等' | '较难'
 export type IngredientGroupType = 'main' | 'side' | 'seasoning'
 export type CookStatus = 'pending' | 'cooking' | 'done'
 export type TasteFeedback = '刚好' | '偏淡' | '偏咸' | '偏甜'
+export type KitchenTimerStatus = 'idle' | 'running' | 'paused' | 'finished'
+export type KitchenTimerContextType = 'manual' | 'step'
 
 export interface UserProfile {
   id: string
@@ -110,4 +112,21 @@ export interface Rating {
   overallScore: number
   comment: string
   createdAt: string
+}
+
+export interface KitchenTimer {
+  status: KitchenTimerStatus
+  durationMs: number
+  remainingMs: number
+  endAt?: number
+  lastFinishedAt?: number
+  alertPending?: boolean
+  context?: {
+    type: KitchenTimerContextType
+    itemId?: string
+    dishId?: string
+    dishName?: string
+    stepNo?: number
+    stepTitle?: string
+  }
 }
