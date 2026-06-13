@@ -85,7 +85,7 @@ import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import { icons } from '@/data/assets'
-import { groupLabels } from '@/data/seed'
+import { groupLabels } from '@/data/labels'
 import type { IngredientGroupType } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 

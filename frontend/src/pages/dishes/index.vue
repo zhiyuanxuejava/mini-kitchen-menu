@@ -103,7 +103,7 @@ import BottomTabbar from '@/components/BottomTabbar.vue'
 import DishListItem from '@/components/DishListItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
-import { categoryLabels } from '@/data/seed'
+import { categoryLabels } from '@/data/labels'
 import type { Difficulty, Dish, DishCategory } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 

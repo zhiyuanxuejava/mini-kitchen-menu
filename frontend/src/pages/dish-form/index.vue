@@ -47,7 +47,7 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
-import { categoryLabels } from '@/data/seed'
+import { categoryLabels } from '@/data/labels'
 import type { Difficulty, DishCategory } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 

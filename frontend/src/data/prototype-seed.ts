@@ -1,5 +1,6 @@
 import { asset } from './assets'
 import type { Dish, DishCategory, Difficulty, Ingredient, DishStep } from './types'
+export { categoryLabels, groupLabels } from './labels'
 
 const imageMap = {
   hongshaorou: {
@@ -33,12 +34,6 @@ const imageMap = {
     detail: asset('dishes/png/detail/broccoli_beef_detail.png')
   }
 }
-
-const groupNames = {
-  main: '主料',
-  side: '辅料',
-  seasoning: '调料'
-} satisfies Record<Ingredient['groupType'], string>
 
 interface StepSeed {
   title: string
@@ -273,23 +268,6 @@ function parseIngredientRows(seed: DishSeed) {
     ['seasoning', seed.seasoning]
   ])
 }
-
-export const categoryLabels: Record<DishCategory | 'all', string> = {
-  all: '全部',
-  meat: '荤菜',
-  vegetable: '素菜',
-  soup: '汤类',
-  staple: '主食',
-  aquatic: '水产',
-  breakfast: '早餐',
-  dessert: '甜品',
-  drink: '饮品',
-  condiment: '调料',
-  semi_finished: '半成品',
-  other: '其他'
-}
-
-export const groupLabels: Record<Ingredient['groupType'], string> = groupNames
 
 export const seedDishes: Dish[] = seeds.map((seed) => {
   const images = imageMap[seed.images]

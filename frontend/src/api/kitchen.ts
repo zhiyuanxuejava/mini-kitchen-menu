@@ -185,12 +185,16 @@ function isAbsoluteMediaUrl(value: string) {
   return /^https?:\/\//.test(value) || value.startsWith('data:')
 }
 
-export function normalizeUserAvatarUrl(value?: string | null) {
+function normalizeMediaUrl(value?: string | null, fallback?: string) {
   const next = value?.trim()
-  if (!next) return DEFAULT_AVATAR
+  if (!next) return fallback || ''
   if (isAbsoluteMediaUrl(next)) return next
-  if (next.startsWith('/uploads/')) return `${apiBase}${next}`
+  if (next.startsWith('/static/') || next.startsWith('/uploads/')) return `${apiBase}${next}`
   return next
+}
+
+export function normalizeUserAvatarUrl(value?: string | null) {
+  return normalizeMediaUrl(value, DEFAULT_AVATAR)
 }
 
 export function isDefaultUserAvatar(value?: string | null) {
@@ -207,7 +211,9 @@ function serializeUserAvatarUrl(value?: string | null) {
   const next = value?.trim()
   if (!next) return undefined
   const uploadBase = `${apiBase}/uploads/`
+  const staticBase = `${apiBase}/static/`
   if (next.startsWith(uploadBase)) return next.slice(apiBase.length)
+  if (next.startsWith(staticBase)) return next.slice(apiBase.length)
   return next
 }
 
@@ -241,7 +247,7 @@ function normalizeRecord(row: BackendCookRecord): CookRecord {
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
     actualMinutes: row.actualMinutes,
-    photos: parsePhotos(row.photos),
+    photos: parsePhotos(row.photos).map((photo) => normalizeMediaUrl(photo)).filter(Boolean),
     tasteFeedback: row.tasteFeedback,
     note: row.note,
     includeInHistory: row.includeInHistory
@@ -284,13 +290,13 @@ function normalizeMenu(row: BackendTodayMenu): TodayMenu {
 }
 
 export function normalizeDish(row: BackendDish): Dish {
-  const coverImage = row.coverImage || PLACEHOLDER_IMAGE
+  const coverImage = normalizeMediaUrl(row.coverImage, PLACEHOLDER_IMAGE)
   const steps = (row.steps || []).map((step) => ({
     id: step.id,
     stepNo: step.stepNo,
     title: step.title,
     description: step.description,
-    image: step.image || coverImage,
+    image: normalizeMediaUrl(step.image, coverImage),
     heat: step.heat,
     minutes: step.minutes,
     tips: step.tips

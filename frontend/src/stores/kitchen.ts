@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { isDefaultUserAvatar, kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
 import { icons } from '@/data/assets'
-import { seedDishes } from '@/data/seed'
+import { seedDishes as prototypeSeedDishes } from '@/data/prototype-seed'
 import type {
   CookRecord,
   CookStatus,
@@ -342,7 +342,7 @@ function defaultRecords(): CookRecord[] {
       startedAt: '2024-05-24 18:40',
       finishedAt: '2024-05-24 19:35',
       actualMinutes: 55,
-      photos: [seedDishes[0].coverImage, seedDishes[0].detailImage],
+      photos: [prototypeSeedDishes[0].coverImage, prototypeSeedDishes[0].detailImage],
       tasteFeedback: '刚好',
       note: '五花肉炖得软糯入味，酱汁收得也刚好。下次可以再多炖 10 分钟。',
       includeInHistory: true
@@ -354,7 +354,7 @@ function defaultRecords(): CookRecord[] {
       startedAt: '2024-05-21 18:20',
       finishedAt: '2024-05-21 18:45',
       actualMinutes: 25,
-      photos: [seedDishes.find((dish) => dish.id === 'mapo-tofu')?.coverImage || seedDishes[0].coverImage],
+      photos: [prototypeSeedDishes.find((dish) => dish.id === 'mapo-tofu')?.coverImage || prototypeSeedDishes[0].coverImage],
       tasteFeedback: '偏咸',
       note: '豆腐嫩，麻味够，盐可以少一点。',
       includeInHistory: true
@@ -395,7 +395,7 @@ function initialState(): Omit<KitchenState, 'hydrated'> {
     token: '',
     user: null,
     stats: defaultStats(),
-    dishes: seedDishes,
+    dishes: prototypeSeedDishes,
     menu: defaultMenu(),
     records: defaultRecords(),
     ratings: defaultRatings(),
@@ -477,7 +477,7 @@ export const useKitchenStore = defineStore('kitchen', {
         this.token = cached.token || ''
         this.user = this.token ? normalizeCachedUser(cached.user) : null
         this.stats = cached.stats || defaultStats()
-        this.dishes = Array.isArray(cached.dishes) && cached.dishes.length ? cached.dishes : seedDishes
+        this.dishes = Array.isArray(cached.dishes) && cached.dishes.length ? cached.dishes : prototypeSeedDishes
         this.menu = cached.menu || defaultMenu()
         this.records = cached.records || (this.token ? [] : defaultRecords())
         this.ratings = cached.ratings || (this.token ? [] : defaultRatings())
@@ -736,7 +736,7 @@ export const useKitchenStore = defineStore('kitchen', {
       try {
         await this.refreshDishes()
       } catch {
-        if (!this.dishes.length) this.dishes = seedDishes
+        if (!this.dishes.length) this.dishes = prototypeSeedDishes
       }
     },
     async loadDish(id: string) {
@@ -966,7 +966,7 @@ export const useKitchenStore = defineStore('kitchen', {
         return dish.id
       }
 
-      const base = seedDishes[0]
+      const base = prototypeSeedDishes[0]
       const dish: Dish = {
         ...base,
         id: makeId('dish'),
