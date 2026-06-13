@@ -6,7 +6,7 @@ import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
-import { PrismaClient, type Dish, type User } from '@prisma/client'
+import { PrismaClient, type Dish, type Prisma, type User } from '@prisma/client'
 import { z } from 'zod'
 import { ensureDatabase } from './db-init.js'
 import { sampleDishes } from './sample-data.js'
@@ -55,6 +55,7 @@ const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
 const wechatAppId = process.env.WECHAT_APP_ID || ''
 const wechatAppSecret = process.env.WECHAT_APP_SECRET || ''
 const defaultWechatNickname = '微信用户'
+const defaultUserAvatarUrl = '/static/assets/illustrations/png/chef_avatar_256.png'
 const configuredAdminEmails = new Set(
   String(process.env.ADMIN_EMAILS || '')
     .split(',')
@@ -75,6 +76,15 @@ app.use('/static', express.static(staticDir))
 
 interface AuthedRequest extends Request {
   user?: User
+}
+
+class HttpError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
 }
 
 type WechatCode2SessionResponse = {
@@ -103,6 +113,10 @@ function publicUser(user: User) {
 
 function roleForEmail(email: string) {
   return configuredAdminEmails.has(email.toLowerCase()) ? 'admin' : 'user'
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase()
 }
 
 async function ensureConfiguredRole(user: User) {
@@ -262,14 +276,114 @@ const wechatLoginSchema = z.object({
   code: z.string().trim().min(1)
 })
 
+const bindEmailSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(6)
+})
+
 const profileSchema = z.object({
   nickname: z.string().trim().min(1).max(24),
   avatarUrl: z.string().trim().min(1).max(500).optional()
 })
 
+function isDefaultAvatarUrl(value?: string | null) {
+  const next = value?.trim()
+  return !next || next === defaultUserAvatarUrl
+}
+
+function shouldUseSourceNickname(target: User, source: User) {
+  const sourceName = source.nickname.trim()
+  if (!sourceName || sourceName === defaultWechatNickname) return false
+
+  const targetName = target.nickname.trim()
+  return !targetName || targetName === defaultWechatNickname
+}
+
+function shouldUseSourceAvatar(target: User, source: User) {
+  return isDefaultAvatarUrl(target.avatarUrl) && !isDefaultAvatarUrl(source.avatarUrl)
+}
+
+async function mergeMenusForUsers(tx: Prisma.TransactionClient, sourceUserId: string, targetUserId: string) {
+  const sourceMenus = await tx.menu.findMany({
+    where: { userId: sourceUserId },
+    orderBy: { menuDate: 'asc' },
+    include: { items: { orderBy: { sortOrder: 'asc' } } }
+  })
+
+  for (const sourceMenu of sourceMenus) {
+    const targetMenu = await tx.menu.findUnique({
+      where: { userId_menuDate: { userId: targetUserId, menuDate: sourceMenu.menuDate } },
+      include: { items: { orderBy: { sortOrder: 'asc' } } }
+    })
+
+    if (!targetMenu) {
+      await tx.menu.update({
+        where: { id: sourceMenu.id },
+        data: { userId: targetUserId }
+      })
+      continue
+    }
+
+    let nextSortOrder = targetMenu.items.reduce((max, item) => Math.max(max, item.sortOrder), 0)
+    for (const item of sourceMenu.items) {
+      nextSortOrder += 1
+      await tx.menuItem.update({
+        where: { id: item.id },
+        data: {
+          menuId: targetMenu.id,
+          sortOrder: nextSortOrder
+        }
+      })
+    }
+
+    await tx.menu.update({
+      where: { id: targetMenu.id },
+      data: {
+        servings: Math.max(targetMenu.servings, sourceMenu.servings),
+        status: targetMenu.status === 'submitted' || sourceMenu.status === 'submitted' ? 'submitted' : targetMenu.status
+      }
+    })
+
+    await tx.menu.delete({ where: { id: sourceMenu.id } })
+  }
+}
+
+async function mergeWechatUserIntoEmailUser(tx: Prisma.TransactionClient, source: User, target: User) {
+  if (!source.wechatOpenId) {
+    throw new HttpError(400, '当前账号不是微信登录账号')
+  }
+  if (target.wechatOpenId && target.wechatOpenId !== source.wechatOpenId) {
+    throw new HttpError(409, '该邮箱账号已绑定其他微信账号')
+  }
+
+  await tx.dish.updateMany({
+    where: { ownerUserId: source.id },
+    data: { ownerUserId: target.id }
+  })
+
+  await mergeMenusForUsers(tx, source.id, target.id)
+
+  await tx.cookRecord.updateMany({
+    where: { userId: source.id },
+    data: { userId: target.id }
+  })
+
+  const mergedUser = await tx.user.update({
+    where: { id: target.id },
+    data: {
+      wechatOpenId: source.wechatOpenId,
+      nickname: shouldUseSourceNickname(target, source) ? source.nickname : target.nickname,
+      avatarUrl: shouldUseSourceAvatar(target, source) ? source.avatarUrl : target.avatarUrl
+    }
+  })
+
+  await tx.user.delete({ where: { id: source.id } })
+  return mergedUser
+}
+
 async function exchangeWechatCode(code: string) {
   if (!wechatAppId || !wechatAppSecret) {
-    throw new Error('未配置微信小程序登录参数')
+    throw new HttpError(500, '未配置微信小程序登录参数')
   }
 
   const params = new URLSearchParams({
@@ -281,12 +395,12 @@ async function exchangeWechatCode(code: string) {
 
   const response = await fetch(`https://api.weixin.qq.com/sns/jscode2session?${params.toString()}`)
   if (!response.ok) {
-    throw new Error(`微信登录服务异常 ${response.status}`)
+    throw new HttpError(502, `微信登录服务异常 ${response.status}`)
   }
 
   const payload = (await response.json()) as WechatCode2SessionResponse
   if (!payload.openid) {
-    throw new Error(payload.errmsg ? `微信登录失败：${payload.errmsg}` : '微信登录失败')
+    throw new HttpError(400, payload.errmsg ? `微信登录失败：${payload.errmsg}` : '微信登录失败')
   }
 
   return payload
@@ -298,14 +412,15 @@ app.get('/health', (_req, res) => {
 
 app.post('/auth/register', async (req, res) => {
   const body = emailSchema.parse(req.body)
+  const email = normalizeEmail(body.email)
   const passwordHash = await bcrypt.hash(body.password, 10)
   const user = await prisma.user.create({
     data: {
-      email: body.email,
+      email,
       passwordHash,
-      nickname: body.email.split('@')[0],
-      avatarUrl: '/static/assets/illustrations/png/chef_avatar_256.png',
-      role: roleForEmail(body.email)
+      nickname: email.split('@')[0],
+      avatarUrl: defaultUserAvatarUrl,
+      role: roleForEmail(email)
     }
   })
   res.json({ token: sign(user), user: publicUser(user) })
@@ -313,11 +428,12 @@ app.post('/auth/register', async (req, res) => {
 
 app.post('/auth/login/email', async (req, res) => {
   const body = emailSchema.parse(req.body)
-  let user = await prisma.user.findUnique({ where: { email: body.email } })
+  const email = normalizeEmail(body.email)
+  let user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
     const passwordHash = await bcrypt.hash(body.password, 10)
     user = await prisma.user.create({
-      data: { email: body.email, passwordHash, nickname: body.email.split('@')[0], role: roleForEmail(body.email) }
+      data: { email, passwordHash, nickname: email.split('@')[0], role: roleForEmail(email) }
     })
   } else if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
     res.status(401).json({ message: '邮箱或密码错误' })
@@ -336,6 +452,54 @@ app.post('/auth/login/wechat', async (req, res) => {
     create: { wechatOpenId: openId, nickname: defaultWechatNickname },
     update: {}
   })
+  res.json({ token: sign(user), user: publicUser(user) })
+})
+
+app.post('/me/bind-email', auth, async (req: AuthedRequest, res) => {
+  const currentUser = req.user!
+  const body = bindEmailSchema.parse(req.body)
+  const email = normalizeEmail(body.email)
+
+  if (currentUser.email) {
+    throw new HttpError(400, '当前账号已绑定邮箱')
+  }
+  if (!currentUser.wechatOpenId) {
+    throw new HttpError(400, '当前账号不是微信登录账号')
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email } })
+
+  if (!existingUser) {
+    const passwordHash = await bcrypt.hash(body.password, 10)
+    let user = await prisma.user.update({
+      where: { id: currentUser.id },
+      data: {
+        email,
+        passwordHash,
+        role: roleForEmail(email)
+      }
+    })
+    user = await ensureConfiguredRole(user)
+    res.json({ token: sign(user), user: publicUser(user) })
+    return
+  }
+
+  if (!existingUser.passwordHash || !(await bcrypt.compare(body.password, existingUser.passwordHash))) {
+    throw new HttpError(401, '邮箱或密码错误')
+  }
+
+  let user = await prisma.$transaction(async (tx) => {
+    const source = await tx.user.findUnique({ where: { id: currentUser.id } })
+    const target = await tx.user.findUnique({ where: { id: existingUser.id } })
+
+    if (!source || !target) {
+      throw new HttpError(404, '账号不存在')
+    }
+
+    return mergeWechatUserIntoEmailUser(tx, source, target)
+  })
+
+  user = await ensureConfiguredRole(user)
   res.json({ token: sign(user), user: publicUser(user) })
 })
 
@@ -831,6 +995,10 @@ app.get('/admin/categories', auth, requireAdmin, async (_req, res) => {
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof z.ZodError) {
     res.status(400).json({ message: 'Validation error', issues: error.issues })
+    return
+  }
+  if (error instanceof HttpError) {
+    res.status(error.status).json({ message: error.message })
     return
   }
   console.error(error)

@@ -194,11 +194,12 @@ function normalizeMediaUrl(value?: string | null, fallback?: string) {
 }
 
 export function normalizeUserAvatarUrl(value?: string | null) {
-  return normalizeMediaUrl(value, DEFAULT_AVATAR)
+  const source = value?.trim() || DEFAULT_AVATAR
+  return normalizeMediaUrl(source, DEFAULT_AVATAR)
 }
 
 export function isDefaultUserAvatar(value?: string | null) {
-  return normalizeUserAvatarUrl(value) === DEFAULT_AVATAR
+  return normalizeUserAvatarUrl(value) === normalizeUserAvatarUrl(DEFAULT_AVATAR)
 }
 
 export function isTemporaryFilePath(value?: string | null) {
@@ -355,6 +356,14 @@ export const kitchenApi = {
     const response = await request<AuthResponse>('/auth/login/wechat', {
       method: 'POST',
       data: { code }
+    })
+    return { token: response.token, user: normalizeUser(response.user) }
+  },
+  async bindEmail(token: string, email: string, password: string) {
+    const response = await request<AuthResponse>('/me/bind-email', {
+      method: 'POST',
+      token,
+      data: { email, password }
     })
     return { token: response.token, user: normalizeUser(response.user) }
   },

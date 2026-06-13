@@ -26,6 +26,10 @@
         <image :src="icons.chefHat" mode="aspectFit" />
         <text>微信一键登录</text>
       </button>
+      <view class="login-tip">
+        <text class="tip-title">登录方式说明</text>
+        <text class="tip-copy">微信登录后可以在“设置”里继续绑定邮箱密码，后续两种方式都能登录同一个账号。</text>
+      </view>
       <text v-if="store.apiError" class="error-text">{{ store.apiError }}</text>
     </view>
   </AppPage>
@@ -180,6 +184,31 @@ async function wechatLogin() {
 .wechat image {
   width: 40rpx;
   height: 40rpx;
+}
+
+.login-tip {
+  margin-top: 18rpx;
+  padding: 20rpx 22rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(180deg, rgba(255, 247, 238, 0.92) 0%, rgba(255, 250, 245, 0.92) 100%);
+}
+
+.tip-title,
+.tip-copy {
+  display: block;
+}
+
+.tip-title {
+  color: $text-main;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.tip-copy {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.55;
 }
 
 .error-text {

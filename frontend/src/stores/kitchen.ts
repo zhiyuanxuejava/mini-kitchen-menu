@@ -673,6 +673,14 @@ export const useKitchenStore = defineStore('kitchen', {
       await this.refreshSessionData()
       this.persist()
     },
+    async bindEmail(email: string, password: string) {
+      if (!this.token) throw new Error('当前未登录')
+      const result = await this.runRemote(() => kitchenApi.bindEmail(this.token, email, password))
+      this.token = result.token
+      this.user = result.user
+      await this.refreshSessionData()
+      this.persist()
+    },
     needsWechatProfileCompletion() {
       return needsWechatProfileCompletion(this.user)
     },

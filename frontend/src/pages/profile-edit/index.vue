@@ -60,7 +60,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { isTemporaryFilePath } from '@/api/kitchen'
+import { isDefaultUserAvatar, isTemporaryFilePath } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 
@@ -88,6 +88,7 @@ onShow(() => {
 
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const pendingUpload = computed(() => isTemporaryFilePath(avatarPreview.value))
+const needsAvatarSelection = computed(() => isDefaultUserAvatar(avatarPreview.value))
 const navSubtitle = computed(() => (isOnboarding.value ? '首次登录需要补全昵称和头像' : '修改后会同步到“我的”和设置页'))
 const accountText = computed(() => store.user?.email || '微信登录账号')
 const helperCopy = computed(() =>
@@ -114,6 +115,10 @@ async function save() {
   const nextName = nickname.value.trim()
   if (!nextName) {
     uni.showToast({ title: '请输入昵称', icon: 'none' })
+    return
+  }
+  if (isOnboarding.value && needsAvatarSelection.value) {
+    uni.showToast({ title: '请选择微信头像', icon: 'none' })
     return
   }
   if (!store.user) return

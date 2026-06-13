@@ -59,16 +59,29 @@
           <text class="setting-arrow">›</text>
         </view>
       </button>
+      <button v-if="canBindEmail" class="setting-row" hover-class="tap" @tap="goBindEmail">
+        <view class="setting-icon">
+          <image :src="icons.bell" mode="aspectFit" />
+        </view>
+        <view class="setting-copy">
+          <text class="setting-title">绑定邮箱</text>
+          <text class="setting-desc">为当前微信账号补充邮箱密码登录方式</text>
+        </view>
+        <view class="setting-meta">
+          <text class="setting-value">去绑定</text>
+          <text class="setting-arrow">›</text>
+        </view>
+      </button>
       <view class="setting-row static">
         <view class="setting-icon">
           <image :src="icons.bell" mode="aspectFit" />
         </view>
         <view class="setting-copy">
-          <text class="setting-title">登录账号</text>
-          <text class="setting-desc">当前用于同步菜谱与记录的账号</text>
+          <text class="setting-title">登录方式</text>
+          <text class="setting-desc">{{ loginMethodDesc }}</text>
         </view>
         <view class="setting-meta">
-          <text class="setting-value">{{ displayEmail }}</text>
+          <text class="setting-value">{{ loginMethodValue }}</text>
         </view>
       </view>
       <view class="setting-row static">
@@ -158,6 +171,19 @@ onShow(async () => {
 
 const displayName = computed(() => store.user?.nickname || '小厨房')
 const displayEmail = computed(() => store.user?.email || '微信登录账号')
+const canBindEmail = computed(() => Boolean(store.user?.wechatOpenId && !store.user?.email))
+const loginMethodValue = computed(() => {
+  if (store.user?.email && store.user?.wechatOpenId) return '邮箱 + 微信'
+  if (store.user?.email) return '仅邮箱'
+  if (store.user?.wechatOpenId) return '仅微信'
+  return '未识别'
+})
+const loginMethodDesc = computed(() => {
+  if (store.user?.email && store.user?.wechatOpenId) return '当前账号已支持两种登录方式'
+  if (store.user?.email) return '当前通过邮箱密码登录并同步数据'
+  if (store.user?.wechatOpenId) return '当前通过微信登录，建议补充邮箱密码登录'
+  return '当前用于同步菜谱与记录的账号'
+})
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
 
@@ -176,6 +202,10 @@ async function refreshAll(showToast = true) {
 
 function goEditProfile() {
   uni.navigateTo({ url: '/pages/profile-edit/index' })
+}
+
+function goBindEmail() {
+  uni.navigateTo({ url: '/pages/email-bind/index' })
 }
 
 function goRecords() {
