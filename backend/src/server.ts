@@ -11,16 +11,49 @@ import { z } from 'zod'
 import { ensureDatabase } from './db-init.js'
 import { sampleDishes } from './sample-data.js'
 
-const prisma = new PrismaClient()
-const app = express()
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(dirname, '..', '..')
+
+function loadEnvFile(filePath: string) {
+  if (!fs.existsSync(filePath)) return
+
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+
+    const separator = line.indexOf('=')
+    if (separator <= 0) continue
+
+    const key = line.slice(0, separator).trim()
+    if (!key || process.env[key] !== undefined) continue
+
+    let value = line.slice(separator + 1).trim()
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+
+    process.env[key] = value
+  }
+}
+
+loadEnvFile(path.join(rootDir, 'backend', '.env'))
+loadEnvFile(path.join(rootDir, '.env'))
+
+const prisma = new PrismaClient()
+const app = express()
 const uploadDir = path.resolve(dirname, '..', 'uploads')
 const staticDir = path.join(rootDir, 'frontend', 'src', 'static')
 const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.json')
 const port = Number(process.env.PORT || 3001)
 const host = process.env.HOST || '0.0.0.0'
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
+const wechatAppId = process.env.WECHAT_APP_ID || ''
+const wechatAppSecret = process.env.WECHAT_APP_SECRET || ''
+const defaultWechatNickname = '微信用户'
 const configuredAdminEmails = new Set(
   String(process.env.ADMIN_EMAILS || '')
     .split(',')
@@ -39,6 +72,14 @@ app.use('/static', express.static(staticDir))
 
 interface AuthedRequest extends Request {
   user?: User
+}
+
+type WechatCode2SessionResponse = {
+  openid?: string
+  unionid?: string
+  session_key?: string
+  errcode?: number
+  errmsg?: string
 }
 
 type RecipeImportSource = {
@@ -214,10 +255,39 @@ const emailSchema = z.object({
   password: z.string().min(6)
 })
 
+const wechatLoginSchema = z.object({
+  code: z.string().trim().min(1)
+})
+
 const profileSchema = z.object({
   nickname: z.string().trim().min(1).max(24),
   avatarUrl: z.string().trim().min(1).max(500).optional()
 })
+
+async function exchangeWechatCode(code: string) {
+  if (!wechatAppId || !wechatAppSecret) {
+    throw new Error('未配置微信小程序登录参数')
+  }
+
+  const params = new URLSearchParams({
+    appid: wechatAppId,
+    secret: wechatAppSecret,
+    js_code: code,
+    grant_type: 'authorization_code'
+  })
+
+  const response = await fetch(`https://api.weixin.qq.com/sns/jscode2session?${params.toString()}`)
+  if (!response.ok) {
+    throw new Error(`微信登录服务异常 ${response.status}`)
+  }
+
+  const payload = (await response.json()) as WechatCode2SessionResponse
+  if (!payload.openid) {
+    throw new Error(payload.errmsg ? `微信登录失败：${payload.errmsg}` : '微信登录失败')
+  }
+
+  return payload
+}
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'zhangshao-menu-api' })
@@ -255,10 +325,12 @@ app.post('/auth/login/email', async (req, res) => {
 })
 
 app.post('/auth/login/wechat', async (req, res) => {
-  const openId = String(req.body.openId || 'wechat-demo-openid')
+  const body = wechatLoginSchema.parse(req.body)
+  const session = await exchangeWechatCode(body.code)
+  const openId = session.openid!
   const user = await prisma.user.upsert({
     where: { wechatOpenId: openId },
-    create: { wechatOpenId: openId, nickname: '小厨房', avatarUrl: '/static/assets/illustrations/png/chef_avatar_256.png' },
+    create: { wechatOpenId: openId, nickname: defaultWechatNickname },
     update: {}
   })
   res.json({ token: sign(user), user: publicUser(user) })

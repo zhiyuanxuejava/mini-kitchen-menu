@@ -157,7 +157,7 @@ onShow(async () => {
 })
 
 const displayName = computed(() => store.user?.nickname || '小厨房')
-const displayEmail = computed(() => store.user?.email || 'demo@kitchen.local')
+const displayEmail = computed(() => store.user?.email || '微信登录账号')
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
 

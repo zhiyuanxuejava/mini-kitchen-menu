@@ -31,6 +31,7 @@ type BackendUser = {
   nickname: string
   avatarUrl?: string | null
   email?: string | null
+  wechatOpenId?: string | null
   role?: 'user' | 'admin'
 }
 
@@ -192,6 +193,10 @@ export function normalizeUserAvatarUrl(value?: string | null) {
   return next
 }
 
+export function isDefaultUserAvatar(value?: string | null) {
+  return normalizeUserAvatarUrl(value) === DEFAULT_AVATAR
+}
+
 export function isTemporaryFilePath(value?: string | null) {
   const next = value?.trim()
   if (!next) return false
@@ -212,6 +217,7 @@ function normalizeUser(user: BackendUser): UserProfile {
     nickname: user.nickname,
     avatarUrl: normalizeUserAvatarUrl(user.avatarUrl),
     email: user.email || undefined,
+    wechatOpenId: user.wechatOpenId || undefined,
     role: user.role || 'user'
   }
 }
@@ -339,10 +345,10 @@ export const kitchenApi = {
     })
     return { token: response.token, user: normalizeUser(response.user) }
   },
-  async loginWithWechat(openId: string) {
+  async loginWithWechat(code: string) {
     const response = await request<AuthResponse>('/auth/login/wechat', {
       method: 'POST',
-      data: { openId }
+      data: { code }
     })
     return { token: response.token, user: normalizeUser(response.user) }
   },

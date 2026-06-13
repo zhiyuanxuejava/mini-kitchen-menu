@@ -71,6 +71,7 @@ const offset = ref(0)
 onShow(async () => {
   store.hydrate()
   if (!store.user) uni.reLaunch({ url: '/pages/login/index' })
+  else if (store.needsWechatProfileCompletion()) uni.redirectTo({ url: '/pages/profile-edit/index?onboarding=1' })
   else await store.ensureRemoteDishes()
 })
 

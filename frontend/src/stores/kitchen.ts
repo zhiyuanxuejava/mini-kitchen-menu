@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
+import { isDefaultUserAvatar, kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { seedDishes } from '@/data/seed'
 import type {
@@ -228,6 +228,11 @@ function normalizeCachedUser(user: UserProfile | null) {
     ...user,
     avatarUrl: normalizeUserAvatarUrl(user.avatarUrl)
   }
+}
+
+function needsWechatProfileCompletion(user: UserProfile | null) {
+  if (!user?.wechatOpenId) return false
+  return !user.nickname?.trim() || user.nickname === '微信用户' || isDefaultUserAvatar(user.avatarUrl)
 }
 
 function todayText() {
@@ -652,11 +657,24 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
     },
     async loginWithWechat() {
-      const result = await this.runRemote(() => kitchenApi.loginWithWechat('wechat-demo-openid'))
+      const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+        uni.login({
+          provider: 'weixin',
+          success: resolve,
+          fail: (error) => reject(new Error(error.errMsg || '微信登录失败'))
+        })
+      })
+
+      if (!loginResult.code) throw new Error('未获取到微信登录凭证')
+
+      const result = await this.runRemote(() => kitchenApi.loginWithWechat(loginResult.code))
       this.token = result.token
       this.user = result.user
       await this.refreshSessionData()
       this.persist()
+    },
+    needsWechatProfileCompletion() {
+      return needsWechatProfileCompletion(this.user)
     },
     logout() {
       this.token = ''

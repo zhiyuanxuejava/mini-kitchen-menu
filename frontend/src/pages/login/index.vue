@@ -45,7 +45,12 @@ const password = ref('123456')
 
 onShow(() => {
   store.hydrate()
-  if (store.user) uni.reLaunch({ url: '/pages/home/index' })
+  if (!store.user) return
+  if (store.needsWechatProfileCompletion()) {
+    uni.redirectTo({ url: '/pages/profile-edit/index?onboarding=1' })
+    return
+  }
+  uni.reLaunch({ url: '/pages/home/index' })
 })
 
 async function submit() {
@@ -65,6 +70,10 @@ async function submit() {
 async function wechatLogin() {
   try {
     await store.loginWithWechat()
+    if (store.needsWechatProfileCompletion()) {
+      uni.redirectTo({ url: '/pages/profile-edit/index?onboarding=1' })
+      return
+    }
     uni.reLaunch({ url: '/pages/home/index' })
   } catch {
     uni.showToast({ title: store.apiError || '微信登录失败', icon: 'none' })

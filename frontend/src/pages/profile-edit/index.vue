@@ -1,15 +1,25 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar title="个人资料" subtitle="修改后会同步到“我的”和设置页" back />
+    <AppNavbar :title="isOnboarding ? '完善微信资料' : '个人资料'" :subtitle="navSubtitle" :back="!isOnboarding" />
 
     <view class="hero card">
-      <button class="avatar-wrap" hover-class="tap" @tap="chooseAvatar">
+      <button
+        v-if="isWechatRuntime"
+        class="avatar-wrap"
+        hover-class="tap"
+        open-type="chooseAvatar"
+        @chooseavatar="chooseWechatAvatar"
+      >
+        <UserAvatar class="avatar" :src="avatarPreview" />
+        <view class="avatar-mask">{{ uploading ? '上传头像中...' : '选择微信头像' }}</view>
+      </button>
+      <button v-else class="avatar-wrap" hover-class="tap" @tap="chooseAvatar">
         <UserAvatar class="avatar" :src="avatarPreview" />
         <view class="avatar-mask">{{ uploading ? '上传头像中...' : '更换头像' }}</view>
       </button>
       <view class="hero-copy">
         <text class="hero-title">{{ nickname || '请输入昵称' }}</text>
-        <text class="hero-sub">{{ store.user?.email || '未绑定邮箱账号' }}</text>
+        <text class="hero-sub">{{ accountText }}</text>
         <view class="hero-tags">
           <text class="pill">{{ roleLabel }}</text>
           <text class="pill green">资料实时同步</text>
@@ -21,11 +31,11 @@
     <view class="form card">
       <view class="field">
         <text class="label">昵称</text>
-        <input v-model.trim="nickname" maxlength="24" placeholder="给自己起一个厨房称呼" />
+        <input v-model.trim="nickname" :type="isWechatRuntime ? 'nickname' : 'text'" maxlength="24" placeholder="给自己起一个厨房称呼" />
       </view>
       <view class="field static">
         <text class="label">登录账号</text>
-        <text class="static-value">{{ store.user?.email || '微信登录账号' }}</text>
+        <text class="static-value">{{ accountText }}</text>
       </view>
       <view class="field static">
         <text class="label">账号角色</text>
@@ -35,18 +45,18 @@
 
     <view class="helper card">
       <text class="helper-title">修改后影响</text>
-      <text class="helper-copy">“我的”页头像、昵称，以及设置页账号资料区域会立刻更新，并写回后端用户信息。</text>
+      <text class="helper-copy">{{ helperCopy }}</text>
     </view>
 
     <button class="primary-btn submit" hover-class="tap" @tap="save">
-      {{ saving ? '保存中...' : '保存资料' }}
+      {{ saving ? '保存中...' : isOnboarding ? '完成并进入小程序' : '保存资料' }}
     </button>
   </AppPage>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -59,6 +69,12 @@ const nickname = ref('')
 const avatarPreview = ref(icons.avatar)
 const saving = ref(false)
 const uploading = ref(false)
+const isOnboarding = ref(false)
+const isWechatRuntime = typeof globalThis !== 'undefined' && 'wx' in globalThis
+
+onLoad((query) => {
+  isOnboarding.value = query?.onboarding === '1'
+})
 
 onShow(() => {
   store.hydrate()
@@ -72,6 +88,13 @@ onShow(() => {
 
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const pendingUpload = computed(() => isTemporaryFilePath(avatarPreview.value))
+const navSubtitle = computed(() => (isOnboarding.value ? '首次登录需要补全昵称和头像' : '修改后会同步到“我的”和设置页'))
+const accountText = computed(() => store.user?.email || '微信登录账号')
+const helperCopy = computed(() =>
+  isOnboarding.value
+    ? '请先补全微信昵称和头像，再进入首页。保存后会同步写回后端用户信息。'
+    : '“我的”页头像、昵称，以及设置页账号资料区域会立刻更新，并写回后端用户信息。'
+)
 
 function chooseAvatar() {
   uni.chooseImage({
@@ -80,6 +103,11 @@ function chooseAvatar() {
       if (res.tempFilePaths?.[0]) avatarPreview.value = res.tempFilePaths[0]
     }
   })
+}
+
+function chooseWechatAvatar(event: { detail?: { avatarUrl?: string } }) {
+  const next = event.detail?.avatarUrl?.trim()
+  if (next) avatarPreview.value = next
 }
 
 async function save() {
@@ -101,7 +129,13 @@ async function save() {
     }
     await store.updateProfile({ nickname: nextName, avatarUrl })
     uni.showToast({ title: '资料已保存', icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 400)
+    setTimeout(() => {
+      if (isOnboarding.value) {
+        uni.reLaunch({ url: '/pages/home/index' })
+        return
+      }
+      uni.navigateBack()
+    }, 400)
   } catch {
     avatarPreview.value = store.user.avatarUrl || icons.avatar
     uni.showToast({ title: store.apiError || '保存失败', icon: 'none' })

@@ -12,6 +12,7 @@ export interface UserProfile {
   nickname: string
   avatarUrl?: string
   email?: string
+  wechatOpenId?: string
   role?: 'user' | 'admin'
 }
 
