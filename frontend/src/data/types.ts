@@ -53,6 +53,7 @@ export interface Dish {
   squareImage: string
   detailImage: string
   description: string
+  remark?: string
   difficulty: Difficulty
   estimatedMinutes: number
   servings: number

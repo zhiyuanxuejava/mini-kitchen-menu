@@ -456,9 +456,9 @@ export const useKitchenStore = defineStore('kitchen', {
     doneCount: (state) => state.menu.items.filter((item) => item.cookStatus === 'done').length,
     menuDishCount: (state) => state.menu.items.reduce((sum, item) => sum + item.quantity, 0),
     myDishCount(state): number {
-      if (state.token) return state.stats.visibleDishCount
+      if (state.token) return state.stats.dishCount
       if (!state.user?.id) return 0
-      return state.dishes.length
+      return state.dishes.filter((dish) => canUserEditDish(dish, state.user)).length
     },
     myRecordCount(state): number {
       return state.token ? state.stats.recordCount : state.records.filter((item) => item.includeInHistory).length
@@ -879,6 +879,9 @@ export const useKitchenStore = defineStore('kitchen', {
     canEditDish(dish: Dish) {
       return canUserEditDish(dish, this.user)
     },
+    myCreatedDishes() {
+      return this.dishes.filter((dish) => this.canEditDish(dish))
+    },
     async setDishLearned(dishId: string, learned: boolean, learnedAt?: string) {
       const dish = this.getDish(dishId)
       if (!dish) throw new Error('菜品不存在')
@@ -1106,10 +1109,11 @@ export const useKitchenStore = defineStore('kitchen', {
       }
       this.persist()
     },
-    async createDish(input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+    async createDish(input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
       if (this.token) {
         const dish = await this.runRemote(() => kitchenApi.createDish(this.token, input))
         this.dishes.unshift(dish)
+        await this.refreshStats()
         this.persist()
         return dish.id
       }
@@ -1122,6 +1126,7 @@ export const useKitchenStore = defineStore('kitchen', {
         emoji: '🍽️',
         category: input.category,
         description: input.description,
+        remark: input.remark,
         difficulty: input.difficulty,
         estimatedMinutes: input.estimatedMinutes,
         servings: input.servings,
@@ -1136,7 +1141,7 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
       return dish.id
     },
-    async updateDish(id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+    async updateDish(id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
       const existing = this.getDish(id)
       if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权编辑这道菜')
 
@@ -1151,6 +1156,26 @@ export const useKitchenStore = defineStore('kitchen', {
       Object.assign(existing, input)
       this.persist()
       return existing.id
+    },
+    async deleteDish(id: string) {
+      const existing = this.getDish(id)
+      if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权删除这道菜')
+
+      const removedRecordIds = new Set(this.records.filter((record) => record.dishId === id).map((record) => record.id))
+
+      if (this.token) {
+        await this.runRemote(() => kitchenApi.deleteDish(this.token, id))
+      }
+
+      this.dishes = this.dishes.filter((dish) => dish.id !== id)
+      this.menu.items = this.menu.items
+        .filter((item) => item.dishId !== id)
+        .map((item, index) => ({ ...item, sortOrder: index + 1 }))
+      this.records = this.records.filter((record) => record.dishId !== id)
+      this.ratings = this.ratings.filter((rating) => !removedRecordIds.has(rating.cookRecordId))
+
+      if (this.token) await this.refreshStats()
+      this.persist()
     }
   }
 })

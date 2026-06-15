@@ -98,6 +98,7 @@ type BackendDish = {
   category: DishCategory
   coverImage: string
   description: string
+  remark?: string | null
   difficulty: Difficulty
   estimatedMinutes: number
   servings: number
@@ -360,6 +361,7 @@ export function normalizeDish(row: BackendDish): Dish {
     squareImage: coverImage,
     detailImage: coverImage,
     description: row.description,
+    remark: row.remark || undefined,
     difficulty: row.difficulty,
     estimatedMinutes: row.estimatedMinutes,
     servings: row.servings,
@@ -423,7 +425,7 @@ export const kitchenApi = {
     const row = await request<BackendDish>(`/dishes/${id}`, { token })
     return normalizeDish(row)
   },
-  async createDish(token: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+  async createDish(token: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
     const row = await request<BackendDish>('/dishes', {
       method: 'POST',
       token,
@@ -437,13 +439,19 @@ export const kitchenApi = {
     })
     return normalizeDish(row)
   },
-  async updateDish(token: string, id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+  async updateDish(token: string, id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
     const row = await request<BackendDish>(`/dishes/${id}`, {
       method: 'PUT',
       token,
       data: input
     })
     return normalizeDish(row)
+  },
+  async deleteDish(token: string, id: string) {
+    return request<{ ok: true }>(`/dishes/${id}`, {
+      method: 'DELETE',
+      token
+    })
   },
   async getTodayMenu(token: string) {
     const row = await request<BackendTodayMenu>('/menus/today', { token })

@@ -30,7 +30,7 @@
     </view>
 
     <view class="detail-actions">
-      <button :class="[dish.learnedAt ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
+      <button v-if="canToggleLearned" :class="[dish.learnedAt ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
         {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
       </button>
       <button class="primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
@@ -43,6 +43,13 @@
         <text class="learned-time">学会时间：{{ learnedTimeLabel }}</text>
       </view>
       <text class="learned-mark">已掌握</text>
+    </view>
+
+    <view class="section-card card">
+      <SectionTitle title="菜品备注" />
+      <view class="remark-box">
+        <text>{{ dish.remark?.trim() || '还没有备注信息，可以在编辑菜品时补充自己的口味偏好、备菜提醒和做法心得。' }}</text>
+      </view>
     </view>
 
     <view class="section-card card">
@@ -115,6 +122,7 @@ onShow(async () => {
 
 const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
+const canToggleLearned = computed(() => Boolean(dish.value?.id))
 const learnedTimeLabel = computed(() => formatLearnedTime(dish.value?.learnedAt))
 const ingredientGroups = computed(() => {
   const types: IngredientGroupType[] = ['main', 'side', 'seasoning']
@@ -258,6 +266,16 @@ function formatLearnedTime(value?: string) {
   padding: 22rpx 24rpx;
   margin-bottom: 24rpx;
   background: linear-gradient(135deg, #fffef8 0%, #f4fbef 100%);
+}
+
+.remark-box {
+  margin-top: 10rpx;
+  padding: 22rpx 20rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #fffaf4 0%, #fffefb 100%);
+  color: $text-sub;
+  font-size: 24rpx;
+  line-height: 1.65;
 }
 
 .learned-title,

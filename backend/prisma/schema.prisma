@@ -41,6 +41,7 @@ model Dish {
   category         String
   coverImage       String
   description      String
+  remark           String           @default("")
   difficulty       String
   estimatedMinutes Int
   servings         Int

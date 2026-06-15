@@ -50,6 +50,7 @@ const statements = [
     "category" TEXT NOT NULL,
     "coverImage" TEXT NOT NULL,
     "description" TEXT NOT NULL,
+    "remark" TEXT NOT NULL DEFAULT '',
     "difficulty" TEXT NOT NULL,
     "estimatedMinutes" INTEGER NOT NULL,
     "servings" INTEGER NOT NULL,
@@ -192,7 +193,7 @@ function selectColumn(columns: ColumnInfo[], name: string, fallback: string) {
 async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
   const columns = await tableInfo(prisma, 'Dish')
   const userId = columns.find((column) => column.name === 'userId')
-  const requiredColumns = ['sourceType', 'sourceName', 'sourceUrl', 'sourceLicense', 'syncKey', 'status']
+  const requiredColumns = ['sourceType', 'sourceName', 'sourceUrl', 'sourceLicense', 'syncKey', 'status', 'remark']
   const needsRebuild = Boolean(userId?.notnull) || requiredColumns.some((name) => !hasColumn(columns, name))
 
   if (!needsRebuild) return
@@ -209,6 +210,7 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
       "category" TEXT NOT NULL,
       "coverImage" TEXT NOT NULL,
       "description" TEXT NOT NULL,
+      "remark" TEXT NOT NULL DEFAULT '',
       "difficulty" TEXT NOT NULL,
       "estimatedMinutes" INTEGER NOT NULL,
       "servings" INTEGER NOT NULL,
@@ -226,7 +228,7 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
       CONSTRAINT "Dish_category_fkey" FOREIGN KEY ("category") REFERENCES "Category" ("code") ON DELETE RESTRICT ON UPDATE CASCADE
     )`)
     await prisma.$executeRawUnsafe(`INSERT INTO "Dish_next" (
-      "id", "userId", "name", "category", "coverImage", "description", "difficulty",
+      "id", "userId", "name", "category", "coverImage", "description", "remark", "difficulty",
       "estimatedMinutes", "servings", "tasteTags", "isFavorite", "sourceType", "sourceName",
       "sourceUrl", "sourceLicense", "syncKey", "status", "createdAt", "updatedAt"
     )
@@ -237,6 +239,7 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
       CASE WHEN ${selectColumn(columns, 'category', `'other'`)} IN (SELECT "code" FROM "Category") THEN ${selectColumn(columns, 'category', `'other'`)} ELSE 'other' END,
       ${selectColumn(columns, 'coverImage', `'/static/assets/placeholders/png/dish_cover_placeholder.png.png'`)},
       ${selectColumn(columns, 'description', `''`)},
+      ${selectColumn(columns, 'remark', `''`)},
       ${selectColumn(columns, 'difficulty', `'简单'`)},
       ${selectColumn(columns, 'estimatedMinutes', '20')},
       ${selectColumn(columns, 'servings', '2')},

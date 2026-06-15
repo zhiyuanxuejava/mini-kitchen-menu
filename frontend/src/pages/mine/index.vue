@@ -22,7 +22,7 @@
       <view class="stats">
       <view>
         <image :src="icons.cookbook" mode="aspectFit" />
-        <text>我的菜品</text>
+        <text>我创建的菜品</text>
         <strong>{{ store.myDishCount }} 道</strong>
       </view>
       <view>
@@ -96,6 +96,7 @@ const displayName = computed(() => store.user?.nickname || '小厨房')
 const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
 
 const quickEntries = computed(() => [
+  { title: '我的菜品', sub: '查看和管理自建菜品', icon: icons.cookbook, tap: () => uni.navigateTo({ url: '/pages/my-dishes/index' }) },
   { title: '我的收藏', sub: '收藏的美味菜谱', icon: icons.heart, tap: () => uni.showToast({ title: '收藏入口已预留', icon: 'none' }) },
   { title: '我已学会', sub: '查看学会时间线', icon: icons.check, tap: () => uni.navigateTo({ url: '/pages/learned-dishes/index' }) },
   { title: '历史记录', sub: '查看烹饪记录', icon: icons.history, tap: () => uni.navigateTo({ url: '/pages/records/index' }) },
