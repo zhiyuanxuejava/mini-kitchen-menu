@@ -65,6 +65,13 @@
         <text>评分</text>
         <text class="filter-mark">{{ sortIndicator('rating') }}</text>
       </button>
+
+      <picker :range="learnedStatusNames" :value="activeLearnedStatusIndex" @change="onLearnedStatusChange">
+        <view :class="['filter-control', { active: activeLearnedStatus !== 'all' }]">
+          <text>{{ activeLearnedStatusLabel }}</text>
+          <text class="filter-mark">⌄</text>
+        </view>
+      </picker>
     </view>
 
     <view v-if="activeFilters.length" class="active-filters">
@@ -108,6 +115,7 @@ import type { Difficulty, Dish, DishCategory } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 
 type DifficultyFilter = Difficulty | 'all'
+type LearnedStatusFilter = 'all' | 'learned' | 'unlearned'
 type SortKey = 'default' | 'time' | 'rating'
 type SortDirection = 'asc' | 'desc'
 
@@ -117,6 +125,7 @@ const searchFocused = ref(false)
 const selectedSuggestionId = ref('')
 const activeCategory = ref<DishCategory | 'all'>('all')
 const activeDifficulty = ref<DifficultyFilter>('all')
+const activeLearnedStatus = ref<LearnedStatusFilter>('all')
 const sortKey = ref<SortKey>('default')
 const sortDirection = ref<SortDirection>('asc')
 const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).map((key) => ({
@@ -126,6 +135,8 @@ const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).
 const categoryNames = categories.map((item) => item.label)
 const difficulties: DifficultyFilter[] = ['all', '简单', '中等', '较难']
 const difficultyPickerNames = ['全部难度', '简单', '中等', '较难']
+const learnedStatuses: LearnedStatusFilter[] = ['all', 'learned', 'unlearned']
+const learnedStatusNames = ['全部状态', '我已学会', '未学会']
 
 onLoad((query) => {
   if (query?.keyword && typeof query.keyword === 'string') keyword.value = query.keyword
@@ -141,6 +152,12 @@ const activeCategoryIndex = computed(() => Math.max(0, categories.findIndex((ite
 const activeCategoryLabel = computed(() => categoryLabels[activeCategory.value])
 const activeDifficultyIndex = computed(() => Math.max(0, difficulties.findIndex((item) => item === activeDifficulty.value)))
 const activeDifficultyLabel = computed(() => (activeDifficulty.value === 'all' ? '难度' : activeDifficulty.value))
+const activeLearnedStatusIndex = computed(() => Math.max(0, learnedStatuses.findIndex((item) => item === activeLearnedStatus.value)))
+const activeLearnedStatusLabel = computed(() => {
+  if (activeLearnedStatus.value === 'learned') return '我已学会'
+  if (activeLearnedStatus.value === 'unlearned') return '未学会'
+  return '状态'
+})
 const selectedSuggestion = computed(() => (selectedSuggestionId.value ? store.getDish(selectedSuggestionId.value) : undefined))
 const searchSuggestions = computed(() => {
   if (!keyword.value.trim() || selectedSuggestionId.value) return []
@@ -151,6 +168,7 @@ const activeFilters = computed(() => {
   const rows: Array<{ key: string; label: string; clear: () => void }> = []
   if (activeDifficulty.value !== 'all') rows.push({ key: 'difficulty', label: `难度：${activeDifficulty.value}`, clear: () => (activeDifficulty.value = 'all') })
   if (activeCategory.value !== 'all') rows.push({ key: 'category', label: `分类：${activeCategoryLabel.value}`, clear: () => (activeCategory.value = 'all') })
+  if (activeLearnedStatus.value !== 'all') rows.push({ key: 'learned', label: `状态：${activeLearnedStatusLabel.value}`, clear: () => (activeLearnedStatus.value = 'all') })
   if (sortKey.value !== 'default') rows.push({ key: 'sort', label: `${sortKey.value === 'time' ? '时间' : '评分'}${sortIndicator(sortKey.value)}`, clear: clearSort })
   return rows
 })
@@ -158,12 +176,21 @@ const dishes = computed(() => {
   if (selectedSuggestion.value) {
     const matchDifficulty = activeDifficulty.value === 'all' || selectedSuggestion.value.difficulty === activeDifficulty.value
     const matchCategory = activeCategory.value === 'all' || selectedSuggestion.value.category === activeCategory.value
-    return matchDifficulty && matchCategory ? [selectedSuggestion.value] : []
+    const matchLearned =
+      activeLearnedStatus.value === 'all' ||
+      (activeLearnedStatus.value === 'learned' && Boolean(selectedSuggestion.value.learnedAt)) ||
+      (activeLearnedStatus.value === 'unlearned' && !selectedSuggestion.value.learnedAt)
+    return matchDifficulty && matchCategory && matchLearned ? [selectedSuggestion.value] : []
   }
 
   const rows = store
     .dishesByCategory(activeCategory.value, keyword.value, 'all')
     .filter((dish) => activeDifficulty.value === 'all' || dish.difficulty === activeDifficulty.value)
+    .filter((dish) => {
+      if (activeLearnedStatus.value === 'learned') return Boolean(dish.learnedAt)
+      if (activeLearnedStatus.value === 'unlearned') return !dish.learnedAt
+      return true
+    })
 
   return sortDishes(rows)
 })
@@ -182,6 +209,11 @@ function onCategoryChange(event: { detail: { value: string | number } }) {
 function onDifficultyChange(event: { detail: { value: string | number } }) {
   const index = Number(event.detail.value)
   activeDifficulty.value = difficulties[index] || 'all'
+}
+
+function onLearnedStatusChange(event: { detail: { value: string | number } }) {
+  const index = Number(event.detail.value)
+  activeLearnedStatus.value = learnedStatuses[index] || 'all'
 }
 
 function onSearchFocus() {
@@ -431,7 +463,7 @@ function goCreate() {
 
 .filter-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   height: 72rpx;
   padding: 0;
@@ -453,12 +485,12 @@ function goCreate() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4rpx;
+  gap: 2rpx;
   min-width: 0;
   margin: 0;
-  padding: 0 8rpx;
+  padding: 0 6rpx;
   color: $text-main;
-  font-size: 25rpx;
+  font-size: 24rpx;
   font-weight: 500;
   line-height: 1;
   border: 0;
@@ -486,7 +518,7 @@ function goCreate() {
 .filter-mark {
   flex: 0 0 auto;
   color: currentColor;
-  font-size: 20rpx;
+  font-size: 18rpx;
 }
 
 .filter-row button::after,
@@ -584,4 +616,5 @@ function goCreate() {
 .api-error {
   color: #d34b2f;
 }
+
 </style>

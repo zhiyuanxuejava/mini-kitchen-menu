@@ -20,20 +20,20 @@
       </view>
       <image class="profile-pot" :src="icons.pot" mode="aspectFit" />
       <view class="stats">
-        <view>
-          <image :src="icons.cookbook" mode="aspectFit" />
-          <text>我的菜品</text>
-          <strong>{{ store.myDishCount }} 道</strong>
-        </view>
-        <view>
-          <image :src="icons.clockOrange" mode="aspectFit" />
-          <text>做菜记录</text>
-          <strong>{{ store.myRecordCount }} 次</strong>
-        </view>
-        <view>
-          <image :src="icons.star" mode="aspectFit" />
-          <text>平均评分</text>
-          <strong>{{ averageRatingText }}</strong>
+      <view>
+        <image :src="icons.cookbook" mode="aspectFit" />
+        <text>我的菜品</text>
+        <strong>{{ store.myDishCount }} 道</strong>
+      </view>
+      <view>
+        <image :src="icons.check" mode="aspectFit" />
+        <text>我已学会</text>
+        <strong>{{ store.learnedDishCount }} 道</strong>
+      </view>
+      <view>
+        <image :src="icons.star" mode="aspectFit" />
+        <text>平均评分</text>
+        <strong>{{ averageRatingText }}</strong>
         </view>
       </view>
     </view>
@@ -97,6 +97,7 @@ const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`
 
 const quickEntries = computed(() => [
   { title: '我的收藏', sub: '收藏的美味菜谱', icon: icons.heart, tap: () => uni.showToast({ title: '收藏入口已预留', icon: 'none' }) },
+  { title: '我已学会', sub: '查看学会时间线', icon: icons.check, tap: () => uni.navigateTo({ url: '/pages/learned-dishes/index' }) },
   { title: '历史记录', sub: '查看烹饪记录', icon: icons.history, tap: () => uni.navigateTo({ url: '/pages/records/index' }) },
   { title: '评分记录', sub: '我的评分汇总', icon: icons.star, tap: () => uni.navigateTo({ url: '/pages/rating-list/index' }) },
   { title: '新增菜品', sub: '记录新菜谱', icon: icons.plus, tap: () => uni.navigateTo({ url: '/pages/dish-form/index' }) }

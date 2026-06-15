@@ -30,8 +30,19 @@
     </view>
 
     <view class="detail-actions">
+      <button :class="[dish.learnedAt ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
+        {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
+      </button>
       <button class="primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
       <button v-if="canEdit" class="ghost-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
+    </view>
+
+    <view v-if="dish.learnedAt" class="learned-banner card">
+      <view>
+        <text class="learned-title">已加入我学会的菜品</text>
+        <text class="learned-time">学会时间：{{ learnedTimeLabel }}</text>
+      </view>
+      <text class="learned-mark">已掌握</text>
     </view>
 
     <view class="section-card card">
@@ -104,6 +115,7 @@ onShow(async () => {
 
 const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
+const learnedTimeLabel = computed(() => formatLearnedTime(dish.value?.learnedAt))
 const ingredientGroups = computed(() => {
   const types: IngredientGroupType[] = ['main', 'side', 'seasoning']
   return types.map((type) => ({
@@ -115,6 +127,28 @@ const ingredientGroups = computed(() => {
 
 function editDish() {
   uni.navigateTo({ url: `/pages/dish-form/index?id=${id.value}` })
+}
+
+async function toggleLearned() {
+  if (!dish.value) return
+  try {
+    const learned = await store.toggleDishLearned(dish.value.id)
+    uni.showToast({ title: learned ? '已加入我学会的菜品' : '已取消学会状态', icon: 'none' })
+  } catch {
+    uni.showToast({ title: store.apiError || '状态更新失败', icon: 'none' })
+  }
+}
+
+function formatLearnedTime(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const y = date.getFullYear()
+  const m = `${date.getMonth() + 1}`.padStart(2, '0')
+  const d = `${date.getDate()}`.padStart(2, '0')
+  const h = `${date.getHours()}`.padStart(2, '0')
+  const min = `${date.getMinutes()}`.padStart(2, '0')
+  return `${y}-${m}-${d} ${h}:${min}`
 }
 
 </script>
@@ -211,8 +245,45 @@ function editDish() {
   margin: 28rpx 0;
 }
 
-.detail-actions .primary-btn:only-child {
+.detail-actions .primary-btn:only-child,
+.detail-actions .ghost-btn:only-child {
   grid-column: 1 / -1;
+}
+
+.learned-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 22rpx 24rpx;
+  margin-bottom: 24rpx;
+  background: linear-gradient(135deg, #fffef8 0%, #f4fbef 100%);
+}
+
+.learned-title,
+.learned-time {
+  display: block;
+}
+
+.learned-title {
+  color: $text-main;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.learned-time {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+}
+
+.learned-mark {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #eef8e8;
+  color: $success;
+  font-size: 22rpx;
+  font-weight: 900;
 }
 
 .section-card {

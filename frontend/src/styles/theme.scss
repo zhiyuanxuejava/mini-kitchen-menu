@@ -14,12 +14,23 @@
 
 @media (min-width: 431px) {
   .safe-page {
+    padding-left: 34rpx;
+    padding-right: 34rpx;
     box-shadow: 0 0 44px rgba(54, 32, 17, 0.08);
+    border-left: 1px solid rgba(236, 225, 215, 0.7);
+    border-right: 1px solid rgba(236, 225, 215, 0.7);
   }
 }
 
 .safe-page.no-tab {
   padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 431px) {
+  .safe-page.no-tab {
+    padding-top: 92rpx;
+    padding-bottom: 72rpx;
+  }
 }
 
 .title-xl {
@@ -63,28 +74,25 @@
 .ghost-btn {
   min-width: 0;
   height: 78rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 24rpx;
   font-size: 30rpx;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .primary-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #fff;
   background: linear-gradient(135deg, $primary-2 0%, $primary 100%);
   box-shadow: 0 12rpx 22rpx rgba(255, 106, 26, 0.2);
 }
 
 .ghost-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: 2rpx solid $primary;
   color: $primary;
   background: #fff;

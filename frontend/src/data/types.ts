@@ -19,6 +19,7 @@ export interface UserProfile {
 export interface MeStats {
   dishCount: number
   visibleDishCount: number
+  learnedDishCount: number
   recordCount: number
   averageRating: number
 }
@@ -59,6 +60,7 @@ export interface Dish {
   rating: number
   ratingCount: number
   isFavorite: boolean
+  learnedAt?: string
   sourceType?: DishSourceType
   sourceName?: string
   sourceUrl?: string
@@ -113,6 +115,12 @@ export interface Rating {
   overallScore: number
   comment: string
   createdAt: string
+}
+
+export interface LearnedDishEntry {
+  id: string
+  learnedAt: string
+  dish: Dish
 }
 
 export interface KitchenTimer {

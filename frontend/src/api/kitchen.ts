@@ -1,4 +1,17 @@
-import type { CookRecord, Difficulty, Dish, DishCategory, DishSourceType, IngredientGroupType, MeStats, Rating, TasteFeedback, TodayMenu, UserProfile } from '@/data/types'
+import type {
+  CookRecord,
+  Difficulty,
+  Dish,
+  DishCategory,
+  DishSourceType,
+  IngredientGroupType,
+  LearnedDishEntry,
+  MeStats,
+  Rating,
+  TasteFeedback,
+  TodayMenu,
+  UserProfile
+} from '@/data/types'
 
 const DEFAULT_API_PORT = '3001'
 const PLACEHOLDER_IMAGE = '/static/assets/placeholders/png/dish_cover_placeholder.png.png'
@@ -94,6 +107,7 @@ type BackendDish = {
   sourceName?: string | null
   sourceUrl?: string | null
   sourceLicense?: string | null
+  learnedAt?: string | null
   ingredients?: BackendIngredient[]
   steps?: BackendStep[]
 }
@@ -153,8 +167,15 @@ type BackendRating = {
 type BackendStats = {
   dishCount: number
   visibleDishCount: number
+  learnedDishCount: number
   recordCount: number
   averageRating: number
+}
+
+type BackendLearnedDishEntry = {
+  id: string
+  learnedAt: string
+  dish: BackendDish
 }
 
 function request<T>(url: string, options: RequestOptions = {}) {
@@ -346,6 +367,7 @@ export function normalizeDish(row: BackendDish): Dish {
     rating: 0,
     ratingCount: 0,
     isFavorite: row.isFavorite,
+    learnedAt: row.learnedAt || undefined,
     sourceType: row.sourceType || 'user_created',
     sourceName: row.sourceName || undefined,
     sourceUrl: row.sourceUrl || undefined,
@@ -429,6 +451,24 @@ export const kitchenApi = {
   },
   async getMyStats(token: string) {
     return request<MeStats>('/me/stats', { token })
+  },
+  async listLearnedDishes(token: string) {
+    const rows = await request<BackendLearnedDishEntry[]>('/me/learned-dishes', { token })
+    return rows.map((row): LearnedDishEntry => ({
+      id: row.id,
+      learnedAt: row.learnedAt,
+      dish: normalizeDish(row.dish)
+    }))
+  },
+  async updateLearnedDish(token: string, dishId: string, learned: boolean, learnedAt?: string) {
+    return request<{ learnedAt: string | null }>(`/dishes/${dishId}/learn`, {
+      method: 'POST',
+      token,
+      data: {
+        learned,
+        ...(learnedAt ? { learnedAt } : {})
+      }
+    })
   },
   async listRecords(token: string) {
     const rows = await request<BackendCookRecord[]>('/records', { token })

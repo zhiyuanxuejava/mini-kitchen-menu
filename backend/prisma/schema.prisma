@@ -20,6 +20,7 @@ model User {
   dishes       Dish[]       @relation("DishOwner")
   menus        Menu[]
   cookRecords  CookRecord[]
+  learnedDishes LearnedDish[]
 }
 
 model Category {
@@ -59,10 +60,24 @@ model Dish {
   steps            DishStep[]
   menuItems        MenuItem[]
   cookRecords      CookRecord[]
+  learnedBy        LearnedDish[]
 
   @@index([ownerUserId])
   @@index([sourceType])
   @@index([category])
+}
+
+model LearnedDish {
+  id        String   @id @default(cuid())
+  userId    String
+  dishId    String
+  learnedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dish      Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dishId])
+  @@index([userId, learnedAt])
+  @@index([dishId])
 }
 
 model DishIngredient {

@@ -92,7 +92,7 @@ async function wechatLogin() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 52rpx;
+  padding-top: 44rpx;
   text-align: center;
 }
 
@@ -118,7 +118,7 @@ async function wechatLogin() {
 
 .login-card {
   margin-top: 58rpx;
-  padding: 30rpx;
+  padding: 34rpx 30rpx 30rpx;
 }
 
 .mode-tabs {
@@ -127,14 +127,19 @@ async function wechatLogin() {
   padding: 8rpx;
   border-radius: 999rpx;
   background: #fff6ee;
+  gap: 8rpx;
 }
 
 .mode-tabs button {
   height: 66rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999rpx;
   color: $text-sub;
   font-size: 27rpx;
   font-weight: 800;
+  line-height: 1.1;
 }
 
 .mode-tabs button.active {
@@ -175,12 +180,14 @@ async function wechatLogin() {
   justify-content: center;
   gap: 12rpx;
   margin-top: 20rpx;
+  padding: 0 24rpx;
   border: 1rpx solid #dcebd4;
   border-radius: 24rpx;
   background: $success-light;
   color: $success;
   font-size: 28rpx;
   font-weight: 800;
+  line-height: 1.1;
 }
 
 .wechat image {
@@ -219,5 +226,15 @@ async function wechatLogin() {
   color: #d34b2f;
   font-size: 24rpx;
   text-align: center;
+}
+
+@media (min-width: 431px) {
+  .login-hero {
+    padding-top: 18rpx;
+  }
+
+  .login-card {
+    margin-top: 44rpx;
+  }
 }
 </style>

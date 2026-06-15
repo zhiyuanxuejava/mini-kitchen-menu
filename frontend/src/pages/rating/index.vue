@@ -37,6 +37,16 @@
       <text class="recommend">推荐 👍</text>
     </view>
 
+    <view v-if="dish && !dish.learnedAt" class="learn-card card">
+      <view class="learn-copy">
+        <text class="learn-title">这道菜你学会了吗？</text>
+        <text class="learn-sub">如果这次已经掌握，可以一键加入“我已学会”，后续会出现在时间线里。</text>
+      </view>
+      <button :class="[learnedMarked ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
+        {{ learnedMarked ? '✓ 已加入我已学会' : '加入我已学会' }}
+      </button>
+    </view>
+
     <view class="comment">
       <text class="comment-title">✎ 我的评价</text>
       <textarea v-model="comment" maxlength="100" placeholder="写一句本次评分备注" />
@@ -72,6 +82,7 @@ const scores = reactive({
   satisfactionScore: 4
 })
 const comment = ref('味道很香，颜色很好，收汁可以再浓一点。')
+const learnedMarked = ref(false)
 
 onLoad((query) => {
   if (query?.recordId && typeof query.recordId === 'string') recordId.value = query.recordId
@@ -107,6 +118,17 @@ async function submit() {
     setTimeout(() => uni.reLaunch({ url: '/pages/mine/index' }), 500)
   } catch {
     uni.showToast({ title: store.apiError || '评分保存失败', icon: 'none' })
+  }
+}
+
+async function toggleLearned() {
+  if (!dish.value) return
+  try {
+    const learnedAt = await store.setDishLearned(dish.value.id, !learnedMarked.value, new Date().toISOString())
+    learnedMarked.value = Boolean(learnedAt)
+    uni.showToast({ title: learnedMarked.value ? '已加入我已学会' : '已取消学会状态', icon: 'none' })
+  } catch {
+    uni.showToast({ title: store.apiError || '更新失败', icon: 'none' })
   }
 }
 </script>
@@ -201,6 +223,38 @@ async function submit() {
 
 .comment {
   margin-top: 26rpx;
+}
+
+.learn-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220rpx;
+  gap: 18rpx;
+  align-items: center;
+  margin-top: 22rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #fffdf7 0%, #f4faee 100%);
+}
+
+.learn-copy {
+  min-width: 0;
+}
+
+.learn-title,
+.learn-sub {
+  display: block;
+}
+
+.learn-title {
+  color: $text-main;
+  font-size: 29rpx;
+  font-weight: 900;
+}
+
+.learn-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+  line-height: 1.5;
 }
 
 .comment-title {

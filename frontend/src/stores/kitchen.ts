@@ -10,6 +10,7 @@ import type {
   DishSourceType,
   KitchenTimer,
   KitchenTimerContextType,
+  LearnedDishEntry,
   MeStats,
   MenuItem,
   Rating,
@@ -18,7 +19,9 @@ import type {
   UserProfile
 } from '@/data/types'
 
-const STORAGE_KEY = 'zhangshao-menu-state'
+const LEGACY_STORAGE_KEY = 'zhangshao-menu-state'
+const AUTH_STORAGE_KEY = 'zhangshao-menu-auth'
+const CACHE_STORAGE_KEY = 'zhangshao-menu-cache'
 const PROTOTYPE_MENU_DISH_IDS = ['hongshaorou', 'tomato-egg', 'seaweed-egg-soup', 'shredded-potato']
 const LEGACY_DISH_NAMES: Record<string, string> = {
   hongshaorou: '红烧肉',
@@ -138,16 +141,21 @@ interface KitchenState {
   kitchenTimer: KitchenTimer
 }
 
-interface PersistedKitchenState {
+interface PersistedAuthState {
   token?: string
   user: UserProfile | null
+}
+
+interface PersistedKitchenCache {
   stats?: MeStats
-  dishes: Dish[]
-  menu: TodayMenu
-  records: CookRecord[]
-  ratings: Rating[]
+  dishes?: Dish[]
+  menu?: TodayMenu
+  records?: CookRecord[]
+  ratings?: Rating[]
   kitchenTimer?: KitchenTimer
 }
+
+type PersistedKitchenState = PersistedAuthState & PersistedKitchenCache
 
 function defaultKitchenTimer(): KitchenTimer {
   return {
@@ -383,6 +391,7 @@ function defaultStats(): MeStats {
   return {
     dishCount: 0,
     visibleDishCount: 0,
+    learnedDishCount: 0,
     recordCount: 0,
     averageRating: 0
   }
@@ -403,10 +412,29 @@ function initialState(): Omit<KitchenState, 'hydrated'> {
   }
 }
 
-function isCurrentRealDishCache(cached: PersistedKitchenState) {
-  const dishes = Array.isArray(cached.dishes) ? cached.dishes : []
+function readPersistedObject<T>(key: string) {
+  try {
+    const cached = uni.getStorageSync(key) as T | ''
+    return cached && typeof cached === 'object' ? cached : null
+  } catch {
+    return null
+  }
+}
 
-  return dishes.length >= MIN_REAL_DISH_COUNT
+function writePersistedObject(key: string, payload: unknown) {
+  try {
+    uni.setStorageSync(key, payload)
+    return true
+  } catch (error) {
+    console.warn(`[kitchen-store] failed to persist ${key}`, error)
+    return false
+  }
+}
+
+function removePersistedObject(key: string) {
+  try {
+    uni.removeStorageSync(key)
+  } catch {}
 }
 
 export const useKitchenStore = defineStore('kitchen', {
@@ -434,6 +462,10 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     myRecordCount(state): number {
       return state.token ? state.stats.recordCount : state.records.filter((item) => item.includeInHistory).length
+    },
+    learnedDishCount(state): number {
+      if (state.token) return state.stats.learnedDishCount
+      return state.dishes.filter((dish) => Boolean(dish.learnedAt)).length
     },
     estimatedMinutes(state): number {
       const menuIds = [...state.menu.items].sort((a, b) => a.sortOrder - b.sortOrder).map((item) => item.dishId)
@@ -470,27 +502,8 @@ export const useKitchenStore = defineStore('kitchen', {
     }
   },
   actions: {
-    hydrate() {
-      if (this.hydrated) return
-      const cached = uni.getStorageSync(STORAGE_KEY) as PersistedKitchenState | ''
-      if (cached && typeof cached === 'object') {
-        this.token = cached.token || ''
-        this.user = this.token ? normalizeCachedUser(cached.user) : null
-        this.stats = cached.stats || defaultStats()
-        this.dishes = Array.isArray(cached.dishes) && cached.dishes.length ? cached.dishes : prototypeSeedDishes
-        this.menu = cached.menu || defaultMenu()
-        this.records = cached.records || (this.token ? [] : defaultRecords())
-        this.ratings = cached.ratings || (this.token ? [] : defaultRatings())
-        this.kitchenTimer = normalizeKitchenTimer(cached.kitchenTimer)
-      }
-      this.hydrated = true
-      this.syncKitchenTimer()
-      ensureKitchenTimerTicker(this)
-    },
-    persist() {
-      const payload: PersistedKitchenState = {
-        token: this.token,
-        user: this.user,
+    buildCachePayload(): PersistedKitchenCache {
+      return {
         stats: this.stats,
         dishes: this.dishes,
         menu: this.menu,
@@ -498,7 +511,100 @@ export const useKitchenStore = defineStore('kitchen', {
         ratings: this.ratings,
         kitchenTimer: this.kitchenTimer
       }
-      uni.setStorageSync(STORAGE_KEY, payload)
+    },
+    buildCompactCachePayload(): PersistedKitchenCache {
+      return {
+        stats: this.stats,
+        dishes: this.token ? [] : prototypeSeedDishes,
+        menu: this.menu,
+        records: this.token ? [] : defaultRecords(),
+        ratings: this.token ? [] : defaultRatings(),
+        kitchenTimer: this.kitchenTimer
+      }
+    },
+    persistAuth() {
+      if (!this.token || !this.user) {
+        removePersistedObject(AUTH_STORAGE_KEY)
+        return
+      }
+
+      writePersistedObject(AUTH_STORAGE_KEY, {
+        token: this.token,
+        user: this.user
+      } satisfies PersistedAuthState)
+    },
+    persistCache() {
+      const payload = this.buildCachePayload()
+      if (writePersistedObject(CACHE_STORAGE_KEY, payload)) return
+
+      removePersistedObject(CACHE_STORAGE_KEY)
+      writePersistedObject(CACHE_STORAGE_KEY, this.buildCompactCachePayload())
+    },
+    resetLocalState() {
+      const next = initialState()
+      this.loading = next.loading
+      this.apiError = next.apiError
+      this.token = next.token
+      this.user = next.user
+      this.stats = next.stats
+      this.dishes = next.dishes
+      this.menu = next.menu
+      this.records = next.records
+      this.ratings = next.ratings
+      this.kitchenTimer = next.kitchenTimer
+    },
+    cacheSession(token: string, user: UserProfile) {
+      this.token = token
+      this.user = user
+      this.persistAuth()
+    },
+    async establishSession(token: string, user: UserProfile) {
+      this.cacheSession(token, user)
+
+      try {
+        await this.refreshSessionData()
+      } catch {
+        this.persistCache()
+      }
+    },
+    hydrate() {
+      if (this.hydrated) return
+      const authCache = readPersistedObject<PersistedAuthState>(AUTH_STORAGE_KEY)
+      const cache = readPersistedObject<PersistedKitchenCache>(CACHE_STORAGE_KEY)
+      const legacyCache = readPersistedObject<PersistedKitchenState>(LEGACY_STORAGE_KEY)
+      const sessionSource = authCache || legacyCache
+      const cacheSource = cache || legacyCache
+
+      if (sessionSource) {
+        this.token = sessionSource.token || ''
+        this.user = this.token ? normalizeCachedUser(sessionSource.user) : null
+      }
+
+      if (cacheSource) {
+        this.stats = cacheSource.stats || defaultStats()
+        if (Array.isArray(cacheSource.dishes)) {
+          this.dishes = cacheSource.dishes.length ? cacheSource.dishes : (this.token ? [] : prototypeSeedDishes)
+        } else {
+          this.dishes = prototypeSeedDishes
+        }
+        this.menu = cacheSource.menu || defaultMenu()
+        this.records = Array.isArray(cacheSource.records) ? cacheSource.records : (this.token ? [] : defaultRecords())
+        this.ratings = Array.isArray(cacheSource.ratings) ? cacheSource.ratings : (this.token ? [] : defaultRatings())
+        this.kitchenTimer = normalizeKitchenTimer(cacheSource.kitchenTimer)
+      }
+      this.hydrated = true
+      this.syncKitchenTimer()
+      ensureKitchenTimerTicker(this)
+
+      if (legacyCache) {
+        removePersistedObject(LEGACY_STORAGE_KEY)
+        this.persist()
+      }
+    },
+    persist() {
+      this.persistAuth()
+      this.persistCache()
+      removePersistedObject(LEGACY_STORAGE_KEY)
     },
     syncKitchenTimer() {
       const next = normalizeKitchenTimer(this.kitchenTimer)
@@ -644,17 +750,11 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     async loginWithEmail(email: string, password: string) {
       const result = await this.runRemote(() => kitchenApi.loginWithEmail(email, password))
-      this.token = result.token
-      this.user = result.user
-      await this.refreshSessionData()
-      this.persist()
+      await this.establishSession(result.token, result.user)
     },
     async registerWithEmail(email: string, password: string) {
       const result = await this.runRemote(() => kitchenApi.registerWithEmail(email, password))
-      this.token = result.token
-      this.user = result.user
-      await this.refreshSessionData()
-      this.persist()
+      await this.establishSession(result.token, result.user)
     },
     async loginWithWechat() {
       const loginResult = await new Promise<UniApp.LoginRes>((resolve, reject) => {
@@ -668,27 +768,21 @@ export const useKitchenStore = defineStore('kitchen', {
       if (!loginResult.code) throw new Error('未获取到微信登录凭证')
 
       const result = await this.runRemote(() => kitchenApi.loginWithWechat(loginResult.code))
-      this.token = result.token
-      this.user = result.user
-      await this.refreshSessionData()
-      this.persist()
+      await this.establishSession(result.token, result.user)
     },
     async bindEmail(email: string, password: string) {
       if (!this.token) throw new Error('当前未登录')
       const result = await this.runRemote(() => kitchenApi.bindEmail(this.token, email, password))
-      this.token = result.token
-      this.user = result.user
-      await this.refreshSessionData()
-      this.persist()
+      await this.establishSession(result.token, result.user)
     },
     needsWechatProfileCompletion() {
       return needsWechatProfileCompletion(this.user)
     },
     logout() {
-      this.token = ''
-      this.user = null
-      this.stats = defaultStats()
-      this.persist()
+      this.resetLocalState()
+      removePersistedObject(AUTH_STORAGE_KEY)
+      removePersistedObject(CACHE_STORAGE_KEY)
+      removePersistedObject(LEGACY_STORAGE_KEY)
     },
     async refreshSessionData() {
       if (!this.token) return
@@ -769,8 +863,54 @@ export const useKitchenStore = defineStore('kitchen', {
     dishSourceLabel(dish: Dish) {
       return sourceLabelOf(dish)
     },
+    isDishLearned(dishId: string) {
+      return Boolean(this.getDish(dishId)?.learnedAt)
+    },
+    learnedDishEntries(): LearnedDishEntry[] {
+      return this.dishes
+        .filter((dish) => Boolean(dish.learnedAt))
+        .map((dish) => ({
+          id: `learned-${dish.id}`,
+          learnedAt: dish.learnedAt as string,
+          dish
+        }))
+        .sort((left, right) => new Date(right.learnedAt).getTime() - new Date(left.learnedAt).getTime())
+    },
     canEditDish(dish: Dish) {
       return canUserEditDish(dish, this.user)
+    },
+    async setDishLearned(dishId: string, learned: boolean, learnedAt?: string) {
+      const dish = this.getDish(dishId)
+      if (!dish) throw new Error('菜品不存在')
+
+      if (this.token) {
+        const result = await this.runRemote(() => kitchenApi.updateLearnedDish(this.token, dishId, learned, learnedAt))
+        dish.learnedAt = result.learnedAt || undefined
+        await this.refreshStats()
+        this.persist()
+        return dish.learnedAt
+      }
+
+      dish.learnedAt = learned ? learnedAt || new Date().toISOString() : undefined
+      this.persist()
+      return dish.learnedAt
+    },
+    async toggleDishLearned(dishId: string) {
+      const dish = this.getDish(dishId)
+      if (!dish) throw new Error('菜品不存在')
+      return this.setDishLearned(dishId, !dish.learnedAt, new Date().toISOString())
+    },
+    async fetchLearnedDishEntries() {
+      if (!this.token) return this.learnedDishEntries()
+
+      const entries = await this.runRemote(() => kitchenApi.listLearnedDishes(this.token))
+      const learnedMap = new Map(entries.map((entry) => [entry.dish.id, entry.learnedAt]))
+      for (const dish of this.dishes) {
+        dish.learnedAt = learnedMap.get(dish.id) || undefined
+      }
+      this.stats.learnedDishCount = learnedMap.size
+      this.persist()
+      return entries
     },
     async updateProfile(input: Pick<UserProfile, 'nickname' | 'avatarUrl'>) {
       if (this.token) {

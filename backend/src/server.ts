@@ -139,6 +139,18 @@ type RecipeImportSource = {
   localImage?: string
 }
 
+type DishWithLearnRelation = Prisma.DishGetPayload<{
+  include: {
+    categoryRef: true
+    ingredients: true
+    steps: true
+    learnedBy: {
+      where: { userId: string }
+      select: { learnedAt: true }
+    }
+  }
+}>
+
 function sign(user: User) {
   return jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: '30d' })
 }
@@ -275,7 +287,12 @@ function canEditDish(dish: Pick<Dish, 'ownerUserId' | 'sourceType'>, user: User)
 async function findVisibleDish(id: string, userId: string) {
   return prisma.dish.findFirst({
     where: { id, ...visibleDishWhere(userId) },
-    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
+    include: {
+      categoryRef: true,
+      ingredients: { orderBy: { sortOrder: 'asc' } },
+      steps: { orderBy: { stepNo: 'asc' } },
+      learnedBy: { where: { userId }, select: { learnedAt: true } }
+    }
   })
 }
 
@@ -302,6 +319,27 @@ async function todayMenu(userId: string) {
     update: {},
     include: { items: { orderBy: { sortOrder: 'asc' }, include: { dish: true } } }
   })
+}
+
+function serializeDishWithLearnedAt(dish: DishWithLearnRelation) {
+  const learn = dish.learnedBy[0]
+  return {
+    ...dish,
+    learnedAt: learn?.learnedAt?.toISOString() || null,
+    learnedBy: undefined
+  }
+}
+
+function serializeLearnedDishEntry(entry: {
+  id: string
+  learnedAt: Date
+  dish: DishWithLearnRelation
+}) {
+  return {
+    id: entry.id,
+    learnedAt: entry.learnedAt.toISOString(),
+    dish: serializeDishWithLearnedAt(entry.dish)
+  }
 }
 
 const emailSchema = z.object({
@@ -584,9 +622,14 @@ app.get('/dishes', auth, async (req: AuthedRequest, res) => {
   const dishes = await prisma.dish.findMany({
     where: { AND: filters },
     orderBy: { createdAt: 'desc' },
-    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
+    include: {
+      categoryRef: true,
+      ingredients: { orderBy: { sortOrder: 'asc' } },
+      steps: { orderBy: { stepNo: 'asc' } },
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+    }
   })
-  res.json(dishes)
+  res.json(dishes.map(serializeDishWithLearnedAt))
 })
 
 app.post('/dishes', auth, async (req: AuthedRequest, res) => {
@@ -626,9 +669,14 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
         create: body.steps.map((item, index) => ({ ...item, stepNo: index + 1 }))
       }
     },
-    include: { ingredients: true, steps: true }
+    include: {
+      categoryRef: true,
+      ingredients: { orderBy: { sortOrder: 'asc' } },
+      steps: { orderBy: { stepNo: 'asc' } },
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+    }
   })
-  res.status(201).json(dish)
+  res.status(201).json(serializeDishWithLearnedAt(dish))
 })
 
 app.get('/dishes/:id', auth, async (req: AuthedRequest, res) => {
@@ -638,7 +686,7 @@ app.get('/dishes/:id', auth, async (req: AuthedRequest, res) => {
     res.status(404).json({ message: 'Dish not found' })
     return
   }
-  res.json(dish)
+  res.json(serializeDishWithLearnedAt(dish))
 })
 
 app.put('/dishes/:id', auth, async (req: AuthedRequest, res) => {
@@ -670,9 +718,14 @@ app.put('/dishes/:id', auth, async (req: AuthedRequest, res) => {
   const dish = await prisma.dish.update({
     where: { id },
     data: { ...data, ...(tasteTags ? { tasteTags: JSON.stringify(tasteTags) } : {}) },
-    include: { categoryRef: true, ingredients: { orderBy: { sortOrder: 'asc' } }, steps: { orderBy: { stepNo: 'asc' } } }
+    include: {
+      categoryRef: true,
+      ingredients: { orderBy: { sortOrder: 'asc' } },
+      steps: { orderBy: { stepNo: 'asc' } },
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+    }
   })
-  res.json(dish)
+  res.json(serializeDishWithLearnedAt(dish))
 })
 
 app.delete('/dishes/:id', auth, async (req: AuthedRequest, res) => {
@@ -861,6 +914,82 @@ app.get('/records', auth, async (req: AuthedRequest, res) => {
   res.json(records)
 })
 
+app.get('/me/learned-dishes', auth, async (req: AuthedRequest, res) => {
+  const q = param(req.query.q).trim()
+  const category = param(req.query.category)
+  const difficulty = param(req.query.difficulty)
+
+  const learned = await prisma.learnedDish.findMany({
+    where: {
+      userId: req.user!.id,
+      dish: {
+        ...(category ? { category } : {}),
+        ...(difficulty ? { difficulty } : {}),
+        ...(q
+          ? {
+              OR: [
+                { name: { contains: q } },
+                { description: { contains: q } },
+                { tasteTags: { contains: q } }
+              ]
+            }
+          : {})
+      }
+    },
+    orderBy: { learnedAt: 'desc' },
+    include: {
+      dish: {
+        include: {
+          categoryRef: true,
+          ingredients: { orderBy: { sortOrder: 'asc' } },
+          steps: { orderBy: { stepNo: 'asc' } },
+          learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+        }
+      }
+    }
+  })
+
+  res.json(learned.map(serializeLearnedDishEntry))
+})
+
+app.post('/dishes/:id/learn', auth, async (req: AuthedRequest, res) => {
+  const id = param(req.params.id)
+  const dish = await findVisibleDish(id, req.user!.id)
+  if (!dish) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+
+  const body = z
+    .object({
+      learned: z.boolean().default(true),
+      learnedAt: z.string().datetime().optional()
+    })
+    .parse(req.body)
+
+  if (!body.learned) {
+    await prisma.learnedDish.deleteMany({
+      where: { userId: req.user!.id, dishId: id }
+    })
+    res.json({ learnedAt: null })
+    return
+  }
+
+  const learnedDish = await prisma.learnedDish.upsert({
+    where: { userId_dishId: { userId: req.user!.id, dishId: id } },
+    create: {
+      userId: req.user!.id,
+      dishId: id,
+      ...(body.learnedAt ? { learnedAt: new Date(body.learnedAt) } : {})
+    },
+    update: {
+      ...(body.learnedAt ? { learnedAt: new Date(body.learnedAt) } : {})
+    }
+  })
+
+  res.json({ learnedAt: learnedDish.learnedAt.toISOString() })
+})
+
 app.get('/records/:id', auth, async (req: AuthedRequest, res) => {
   const id = param(req.params.id)
   const record = await prisma.cookRecord.findFirst({
@@ -941,14 +1070,15 @@ app.get('/ratings/me', auth, async (req: AuthedRequest, res) => {
 })
 
 app.get('/me/stats', auth, async (req: AuthedRequest, res) => {
-  const [ownDishCount, visibleDishCount, recordCount, ratings] = await Promise.all([
+  const [ownDishCount, visibleDishCount, learnedDishCount, recordCount, ratings] = await Promise.all([
     prisma.dish.count({ where: { ownerUserId: req.user!.id } }),
     prisma.dish.count({ where: visibleDishWhere(req.user!.id) }),
+    prisma.learnedDish.count({ where: { userId: req.user!.id } }),
     prisma.cookRecord.count({ where: { userId: req.user!.id } }),
     prisma.rating.findMany({ where: { record: { userId: req.user!.id } }, select: { overallScore: true } })
   ])
-  const averageRating = ratings.length ? Number((ratings.reduce((sum, item) => sum + item.overallScore, 0) / ratings.length).toFixed(1)) : 0
-  res.json({ dishCount: ownDishCount, visibleDishCount, recordCount, averageRating })
+  const averageRating = ratings.length ? Number((ratings.reduce((sum: number, item: { overallScore: number }) => sum + item.overallScore, 0) / ratings.length).toFixed(1)) : 0
+  res.json({ dishCount: ownDishCount, visibleDishCount, learnedDishCount, recordCount, averageRating })
 })
 
 app.get('/admin/overview', auth, requireAdmin, async (_req, res) => {

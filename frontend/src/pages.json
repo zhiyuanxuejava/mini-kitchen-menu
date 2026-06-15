@@ -2,12 +2,6 @@
   "__usePrivacyCheck__": true,
   "pages": [
     {
-      "path": "pages/login/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/home/index",
       "style": {
         "navigationStyle": "custom"
@@ -93,6 +87,18 @@
     },
     {
       "path": "pages/rating-list/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/learned-dishes/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/login/index",
       "style": {
         "navigationStyle": "custom"
       }

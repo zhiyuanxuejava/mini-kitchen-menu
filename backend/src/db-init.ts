@@ -139,7 +139,18 @@ const statements = [
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Rating_cookRecordId_fkey" FOREIGN KEY ("cookRecordId") REFERENCES "CookRecord" ("id") ON DELETE CASCADE ON UPDATE CASCADE
   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Rating_cookRecordId_key" ON "Rating"("cookRecordId")`
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Rating_cookRecordId_key" ON "Rating"("cookRecordId")`,
+  `CREATE TABLE IF NOT EXISTS "LearnedDish" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "dishId" TEXT NOT NULL,
+    "learnedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "LearnedDish_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "LearnedDish_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "LearnedDish_userId_dishId_key" ON "LearnedDish"("userId", "dishId")`,
+  `CREATE INDEX IF NOT EXISTS "LearnedDish_userId_learnedAt_idx" ON "LearnedDish"("userId", "learnedAt")`,
+  `CREATE INDEX IF NOT EXISTS "LearnedDish_dishId_idx" ON "LearnedDish"("dishId")`
 ]
 
 async function tableInfo(prisma: PrismaClient, table: string) {

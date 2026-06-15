@@ -18,6 +18,10 @@
         <image class="mini" :src="icons.star" mode="aspectFit" />
         <text>{{ dish.rating || '暂无' }}（{{ dish.ratingCount }}人评分）</text>
       </view>
+      <view v-if="dish.learnedAt" class="learned-chip">
+        <image class="mini" :src="icons.check" mode="aspectFit" />
+        <text>我已学会</text>
+      </view>
     </view>
     <view class="buttons">
       <button class="ghost-btn" hover-class="tap" @tap="$emit('view', dish.id)">查看做法</button>
@@ -112,6 +116,19 @@ defineEmits<{
   flex-direction: column;
   gap: 14rpx;
   min-width: 0;
+}
+
+.learned-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 10rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eef8e8;
+  color: $success;
+  font-size: 22rpx;
+  font-weight: 800;
 }
 
 .buttons .ghost-btn,
