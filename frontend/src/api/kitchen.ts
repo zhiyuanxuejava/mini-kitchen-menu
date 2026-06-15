@@ -4,21 +4,40 @@ const DEFAULT_API_PORT = '3001'
 const PLACEHOLDER_IMAGE = '/static/assets/placeholders/png/dish_cover_placeholder.png.png'
 const DEFAULT_AVATAR = '/static/assets/illustrations/png/chef_avatar_256.png'
 
+function normalizeConfiguredApiBase(value: string) {
+  const next = value.trim()
+  if (!next) return ''
+
+  try {
+    const url = new URL(next)
+    if (import.meta.env.DEV) return url.toString().replace(/\/$/, '')
+    return url.protocol === 'https:' ? url.toString().replace(/\/$/, '') : ''
+  } catch {
+    return ''
+  }
+}
+
 function resolveApiBase() {
   const configured = import.meta.env.VITE_API_BASE
-  if (configured) return configured.replace(/\/$/, '')
+  if (configured) return normalizeConfiguredApiBase(configured)
 
-  if (typeof window !== 'undefined') {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
     const host = window.location.hostname
     if (host && !['localhost', '127.0.0.1', '::1'].includes(host)) {
       return `http://${host}:${DEFAULT_API_PORT}`
     }
   }
 
+  if (!import.meta.env.DEV) return ''
   return `http://localhost:${DEFAULT_API_PORT}`
 }
 
 export const apiBase = resolveApiBase()
+
+function requireApiBase() {
+  if (apiBase) return apiBase
+  throw new Error('未配置正式 API 域名，请设置 VITE_API_BASE 为 HTTPS 域名')
+}
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -135,8 +154,9 @@ type BackendStats = {
 
 function request<T>(url: string, options: RequestOptions = {}) {
   return new Promise<T>((resolve, reject) => {
+    const base = requireApiBase()
     uni.request({
-      url: `${apiBase}${url}`,
+      url: `${base}${url}`,
       method: options.method || 'GET',
       data: options.data,
       header: {
@@ -189,7 +209,7 @@ function normalizeMediaUrl(value?: string | null, fallback?: string) {
   const next = value?.trim()
   if (!next) return fallback || ''
   if (isAbsoluteMediaUrl(next)) return next
-  if (next.startsWith('/static/') || next.startsWith('/uploads/')) return `${apiBase}${next}`
+  if ((next.startsWith('/static/') || next.startsWith('/uploads/')) && apiBase) return `${apiBase}${next}`
   return next
 }
 
@@ -211,6 +231,7 @@ export function isTemporaryFilePath(value?: string | null) {
 function serializeUserAvatarUrl(value?: string | null) {
   const next = value?.trim()
   if (!next) return undefined
+  if (!apiBase) return next
   const uploadBase = `${apiBase}/uploads/`
   const staticBase = `${apiBase}/static/`
   if (next.startsWith(uploadBase)) return next.slice(apiBase.length)
@@ -425,6 +446,7 @@ export const kitchenApi = {
     return normalizeUser(row)
   },
   async uploadFiles(token: string, filePaths: string[]) {
+    const base = requireApiBase()
     return new Promise<string[]>((resolve, reject) => {
       const uploaded: string[] = []
       const files = filePaths.slice()
@@ -436,7 +458,7 @@ export const kitchenApi = {
           return
         }
         uni.uploadFile({
-          url: `${apiBase}/uploads`,
+          url: `${base}/uploads`,
           filePath,
           name: 'files',
           header: { Authorization: `Bearer ${token}` },

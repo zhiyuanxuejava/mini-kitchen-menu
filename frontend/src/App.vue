@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app'
 import { useKitchenStore } from '@/stores/kitchen'
+import { setupWechatPrivacy } from '@/utils/wechat-privacy'
 
 onLaunch(() => {
   useKitchenStore().hydrate()
+  setupWechatPrivacy()
 })
 </script>
 

@@ -15,6 +15,27 @@ npm install --registry=https://registry.npmmirror.com
 npm run build:mp-weixin
 ```
 
+小程序微信配置改为本地生成，不再提交真实 `AppID`。先在本地 `backend/.env` 中填写：
+
+```env
+WECHAT_APP_ID="你的微信小程序 AppID"
+WECHAT_APP_SECRET="你的微信小程序 AppSecret"
+```
+
+执行 `npm run dev:mp-weixin` 或 `npm run build:mp-weixin` 时，会自动生成仅本地使用的：
+
+```text
+frontend/src/manifest.json
+frontend/project.config.json
+```
+
+这两个文件已加入 `.gitignore`，不会再上传到 GitHub。仓库中保留的模板文件为：
+
+```text
+frontend/src/manifest.example.json
+frontend/project.config.example.json
+```
+
 微信开发者工具导入：
 
 ```text

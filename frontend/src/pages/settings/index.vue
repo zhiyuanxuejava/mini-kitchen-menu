@@ -96,6 +96,19 @@
           <text class="setting-value">{{ roleLabel }}</text>
         </view>
       </view>
+      <button v-if="isWechatRuntime" class="setting-row" hover-class="tap" @tap="openPrivacyGuide">
+        <view class="setting-icon">
+          <image :src="icons.help" mode="aspectFit" />
+        </view>
+        <view class="setting-copy">
+          <text class="setting-title">隐私指引</text>
+          <text class="setting-desc">查看微信资料采集说明，并确认当前授权状态</text>
+        </view>
+        <view class="setting-meta">
+          <text class="setting-value">{{ privacyGuideText }}</text>
+          <text class="setting-arrow">›</text>
+        </view>
+      </button>
     </view>
 
     <view class="section card">
@@ -156,15 +169,24 @@ import AppPage from '@/components/AppPage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
+import { openWechatPrivacyContract, syncWechatPrivacySetting, wechatPrivacyState } from '@/utils/wechat-privacy'
 
 const store = useKitchenStore()
 const refreshing = ref(false)
+const isWechatRuntime = typeof globalThis !== 'undefined' && 'wx' in globalThis
 
 onShow(async () => {
   store.hydrate()
   if (!store.user) {
     uni.reLaunch({ url: '/pages/login/index' })
     return
+  }
+  if (isWechatRuntime) {
+    try {
+      await syncWechatPrivacySetting(false)
+    } catch {
+      // Ignore platform read failures and keep page usable.
+    }
   }
   await refreshAll(false)
 })
@@ -186,6 +208,7 @@ const loginMethodDesc = computed(() => {
 })
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
+const privacyGuideText = computed(() => (wechatPrivacyState.needAuthorization ? '待确认' : '已同步'))
 
 async function refreshAll(showToast = true) {
   if (!store.token || refreshing.value) return
@@ -214,6 +237,15 @@ function goRecords() {
 
 function goRatings() {
   uni.navigateTo({ url: '/pages/rating-list/index' })
+}
+
+async function openPrivacyGuide() {
+  try {
+    await syncWechatPrivacySetting(true)
+    await openWechatPrivacyContract()
+  } catch (error) {
+    uni.showToast({ title: error instanceof Error ? error.message : '打开失败', icon: 'none' })
+  }
 }
 
 function logout() {

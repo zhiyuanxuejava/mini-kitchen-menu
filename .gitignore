@@ -10,6 +10,8 @@ node_modules/
 !backend/.env.example
 !frontend/.env.example
 !admin/.env.example
+frontend/project.config.json
+frontend/src/manifest.json
 
 # Logs
 *.log

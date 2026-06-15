@@ -41,11 +41,12 @@ import { onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
+import { syncWechatPrivacySetting } from '@/utils/wechat-privacy'
 
 const store = useKitchenStore()
 const mode = ref<'login' | 'register'>('login')
-const email = ref('demo@kitchen.local')
-const password = ref('123456')
+const email = ref('')
+const password = ref('')
 
 onShow(() => {
   store.hydrate()
@@ -73,6 +74,7 @@ async function submit() {
 
 async function wechatLogin() {
   try {
+    await syncWechatPrivacySetting(false)
     await store.loginWithWechat()
     if (store.needsWechatProfileCompletion()) {
       uni.redirectTo({ url: '/pages/profile-edit/index?onboarding=1' })

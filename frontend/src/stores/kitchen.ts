@@ -642,14 +642,14 @@ export const useKitchenStore = defineStore('kitchen', {
         this.loading = false
       }
     },
-    async loginWithEmail(email: string, password = '123456') {
+    async loginWithEmail(email: string, password: string) {
       const result = await this.runRemote(() => kitchenApi.loginWithEmail(email, password))
       this.token = result.token
       this.user = result.user
       await this.refreshSessionData()
       this.persist()
     },
-    async registerWithEmail(email: string, password = '123456') {
+    async registerWithEmail(email: string, password: string) {
       const result = await this.runRemote(() => kitchenApi.registerWithEmail(email, password))
       this.token = result.token
       this.user = result.user

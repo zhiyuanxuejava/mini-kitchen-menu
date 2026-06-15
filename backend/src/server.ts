@@ -52,8 +52,10 @@ const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.js
 const port = Number(process.env.PORT || 3001)
 const host = process.env.HOST || '0.0.0.0'
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
+const isProduction = process.env.NODE_ENV === 'production'
 const wechatAppId = process.env.WECHAT_APP_ID || ''
 const wechatAppSecret = process.env.WECHAT_APP_SECRET || ''
+const maxUploadFileSize = Number(process.env.MAX_UPLOAD_FILE_SIZE_MB || 4) * 1024 * 1024
 const defaultWechatNickname = '微信用户'
 const defaultUserAvatarUrl = '/static/assets/illustrations/png/chef_avatar_256.png'
 const configuredAdminEmails = new Set(
@@ -62,13 +64,48 @@ const configuredAdminEmails = new Set(
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
 )
+const configuredCorsOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
 
 fs.mkdirSync(uploadDir, { recursive: true })
 fs.mkdirSync(backendStaticDir, { recursive: true })
 
-const upload = multer({ dest: uploadDir })
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: maxUploadFileSize, files: 3 },
+  fileFilter: (_req, file, callback) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+    if (allowed.includes(file.mimetype)) {
+      callback(null, true)
+      return
+    }
+    callback(new HttpError(400, '仅支持上传 JPG、PNG、WebP、HEIC 图片'))
+  }
+})
 
-app.use(cors())
+if (isProduction && (jwtSecret === 'dev-zhangshao-menu-secret' || jwtSecret === 'change-me-in-production')) {
+  throw new Error('生产环境必须配置安全的 JWT_SECRET')
+}
+
+if (isProduction && !configuredCorsOrigins.length) {
+  throw new Error('生产环境必须配置 CORS_ORIGINS')
+}
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || !configuredCorsOrigins.length) {
+      callback(null, true)
+      return
+    }
+    if (configuredCorsOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+    callback(new HttpError(403, '当前来源未被允许访问'))
+  }
+}))
 app.use(express.json({ limit: '4mb' }))
 app.use('/uploads', express.static(uploadDir))
 app.use('/static', express.static(backendStaticDir))
@@ -995,6 +1032,14 @@ app.get('/admin/categories', auth, requireAdmin, async (_req, res) => {
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof z.ZodError) {
     res.status(400).json({ message: 'Validation error', issues: error.issues })
+    return
+  }
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({ message: `单张图片不能超过 ${Math.round(maxUploadFileSize / 1024 / 1024)}MB` })
+      return
+    }
+    res.status(400).json({ message: '上传文件不符合要求' })
     return
   }
   if (error instanceof HttpError) {

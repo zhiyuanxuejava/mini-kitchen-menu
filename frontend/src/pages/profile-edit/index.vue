@@ -63,6 +63,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { isDefaultUserAvatar, isTemporaryFilePath } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
+import { ensureWechatPrivacyAuthorization } from '@/utils/wechat-privacy'
 
 const store = useKitchenStore()
 const nickname = ref('')
@@ -112,6 +113,14 @@ function chooseWechatAvatar(event: { detail?: { avatarUrl?: string } }) {
 }
 
 async function save() {
+  if (isWechatRuntime) {
+    try {
+      await ensureWechatPrivacyAuthorization(true)
+    } catch (error) {
+      uni.showToast({ title: error instanceof Error ? error.message : '请先同意隐私指引', icon: 'none' })
+      return
+    }
+  }
   const nextName = nickname.value.trim()
   if (!nextName) {
     uni.showToast({ title: '请输入昵称', icon: 'none' })
