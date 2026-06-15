@@ -76,6 +76,12 @@ npm run dev:admin
 http://localhost:5174
 ```
 
+生产环境网页发布说明见：
+
+```text
+deploy/linux/README.md
+```
+
 ## 本地联调启动顺序
 
 ```bash

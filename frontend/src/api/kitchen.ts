@@ -8,6 +8,11 @@ function normalizeConfiguredApiBase(value: string) {
   const next = value.trim()
   if (!next) return ''
 
+  if (next.startsWith('/')) {
+    if (typeof window === 'undefined') return ''
+    return next.replace(/\/$/, '')
+  }
+
   try {
     const url = new URL(next)
     if (import.meta.env.DEV) return url.toString().replace(/\/$/, '')
@@ -36,7 +41,7 @@ export const apiBase = resolveApiBase()
 
 function requireApiBase() {
   if (apiBase) return apiBase
-  throw new Error('未配置正式 API 域名，请设置 VITE_API_BASE 为 HTTPS 域名')
+  throw new Error('未配置正式 API 地址，请设置 VITE_API_BASE 为 HTTPS 域名或同域 /api')
 }
 
 type RequestOptions = {

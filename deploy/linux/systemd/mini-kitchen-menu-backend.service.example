@@ -1,0 +1,17 @@
+[Unit]
+Description=Mini Kitchen Menu Backend
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/mini-kitchen-menu
+Environment=NODE_ENV=production
+EnvironmentFile=/srv/mini-kitchen-menu/backend/.env
+ExecStart=/usr/bin/env node backend/dist/server.js
+Restart=always
+RestartSec=5
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
