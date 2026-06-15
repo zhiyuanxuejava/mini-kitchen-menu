@@ -25,7 +25,7 @@
           <text class="timer-panel-title">{{ timerSummaryTitle }}</text>
           <text class="timer-panel-sub">{{ timerSummarySub }}</text>
         </view>
-        <button class="timer-panel-toggle" hover-class="tap" @tap="toggleTimerPanel">
+        <button class="timer-panel-toggle" hover-class="tap" @tap="openTimerDialog">
           {{ timerToggleText }}
         </button>
       </view>
@@ -44,70 +44,82 @@
         </view>
       </view>
 
-      <view v-if="timerPanelExpanded" class="timer-editor">
-        <view class="preset-row">
-          <button
-            v-for="minutes in presetMinutes"
-            :key="minutes"
-            :class="['preset-pill', { active: timerDraftMinutes === minutes }]"
-            hover-class="tap"
-            @tap="pickPreset(minutes)"
-          >
-            {{ minutes }} 分钟
-          </button>
-        </view>
+      <view class="timer-status-note">
+        <text>{{ timerStatusNote }}</text>
+      </view>
+    </view>
 
-        <view class="timer-custom">
-          <view class="timer-custom-copy">
-            <text class="timer-custom-title">自定义这一步时长</text>
-            <text class="timer-custom-sub">默认带入步骤建议时间，也可以按实际火候重新调整。</text>
+    <view v-if="timerDialogVisible" class="timer-dialog-layer">
+      <view class="timer-dialog-mask" @tap="closeTimerDialog" />
+      <view class="timer-dialog card" @tap.stop>
+        <view class="timer-dialog-glow" />
+
+        <view class="timer-dialog-head">
+          <view class="timer-dialog-badge">
+            <image :src="icons.timer" mode="aspectFit" />
           </view>
-          <view class="timer-custom-input">
-            <input
-              v-model="customMinutes"
-              type="number"
-              maxlength="3"
-              confirm-type="done"
-              placeholder="输入分钟"
-              @confirm="normalizeCustomMinutesInput"
-              @blur="normalizeCustomMinutesInput"
-            />
-            <text class="timer-custom-unit">分钟</text>
+          <view class="timer-dialog-copy">
+            <text class="timer-dialog-title">{{ timerDialogTitle }}</text>
+            <text class="timer-dialog-sub">{{ timerDialogSub }}</text>
           </view>
         </view>
 
-        <view class="timer-actions">
-          <button
-            v-if="currentStepTimerActive && store.kitchenTimer.status === 'running'"
-            class="ghost-btn"
-            hover-class="tap"
-            @tap="pauseStepTimer"
-          >
-            暂停
-          </button>
-          <button
-            v-else-if="currentStepTimerActive && store.kitchenTimer.status === 'paused'"
-            class="ghost-btn"
-            hover-class="tap"
-            @tap="resumeStepTimer"
-          >
-            继续
-          </button>
-          <button v-else class="ghost-btn" hover-class="tap" @tap="collapseTimerPanel">先不计时</button>
-
-          <button class="primary-btn" hover-class="tap" @tap="applyStepTimer">
-            {{ timerPrimaryActionText }}
-          </button>
+        <view v-if="timerConflictText" class="timer-conflict-note">
+          <text class="timer-conflict-title">当前已有其他步骤计时</text>
+          <text class="timer-conflict-sub">{{ timerConflictText }}</text>
         </view>
 
-        <button
-          v-if="canResetTimer"
-          class="timer-reset"
-          hover-class="tap"
-          @tap="resetTimer"
-        >
-          {{ timerResetText }}
-        </button>
+        <view class="timer-editor">
+          <view class="preset-row">
+            <button
+              v-for="minutes in presetMinutes"
+              :key="minutes"
+              :class="['preset-pill', { active: timerDraftMinutes === minutes }]"
+              hover-class="tap"
+              @tap="pickPreset(minutes)"
+            >
+              {{ minutes }} 分钟
+            </button>
+          </view>
+
+          <view class="timer-custom">
+            <view class="timer-custom-copy">
+              <text class="timer-custom-title">设置这一步计时</text>
+              <text class="timer-custom-sub">默认带入步骤建议时间，也可以按实际火候重新调整。</text>
+            </view>
+            <view class="timer-custom-input">
+              <input
+                v-model="customMinutes"
+                type="number"
+                maxlength="3"
+                confirm-type="done"
+                placeholder="输入分钟"
+                @confirm="normalizeCustomMinutesInput"
+                @blur="normalizeCustomMinutesInput"
+              />
+              <text class="timer-custom-unit">分钟</text>
+            </view>
+          </view>
+
+          <view class="timer-actions">
+            <button class="ghost-btn" hover-class="tap" @tap="handleTimerSecondaryAction">
+              {{ timerSecondaryActionText }}
+            </button>
+
+            <button class="primary-btn" hover-class="tap" @tap="applyStepTimer">
+              {{ timerPrimaryActionText }}
+            </button>
+          </view>
+
+          <button
+            v-if="canResetTimer"
+            class="timer-reset"
+            hover-class="tap"
+            @tap="resetTimer"
+          >
+            {{ timerResetText }}
+          </button>
+        </view>
       </view>
     </view>
 
@@ -132,7 +144,7 @@ import { primeKitchenTimerAlert } from '@/utils/kitchen-timer-alert'
 const store = useKitchenStore()
 const itemId = ref('')
 const now = ref(Date.now())
-const timerPanelExpanded = ref(false)
+const timerDialogVisible = ref(false)
 const customMinutes = ref('')
 const presetMinutes = [3, 5, 8, 10, 12, 15, 20, 30]
 let clockId: ReturnType<typeof setInterval> | undefined
@@ -207,11 +219,11 @@ const timerSummarySub = computed(() => {
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '离开当前页面也会继续倒计时，结束时会全局强提醒。'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '剩余时间已经保留，继续或重新设定都在本页完成。'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'finished') return '这一段步骤的提醒已完成，可以直接再来一轮。'
-  if (anotherStepTimerActive.value) return '当前已有别的步骤在计时，如果重新开始会切换为当前这一步。'
+  if (anotherStepTimerActive.value) return '当前已有别的步骤在计时，开始新计时前会先提示你确认切换。'
   return '默认带入当前步骤所需时间，适合焖、蒸、煮这类需要盯时间的操作。'
 })
 const timerToggleText = computed(() => {
-  if (timerPanelExpanded.value) return '收起'
+  if (timerDialogVisible.value) return '配置中'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '调整'
   return '计时'
 })
@@ -233,10 +245,11 @@ const timerHeroMetaTop = computed(() => {
 const timerHeroMetaBottom = computed(() => {
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '结束后全局弹窗提醒'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '可直接继续当前计时'
-  if (anotherStepTimerActive.value) return '重新开始会切换到当前步骤'
+  if (anotherStepTimerActive.value) return '切换时会结束上一段步骤计时'
   return `默认填充 ${defaultStepMinutes()} 分钟`
 })
 const timerPrimaryActionText = computed(() => {
+  if (anotherStepTimerActive.value) return '确认切换并开始'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '按新时长重开'
   if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '按新时长开始'
   return '开始计时'
@@ -245,6 +258,31 @@ const canResetTimer = computed(() => hasStepTimer.value)
 const timerResetText = computed(() => {
   if (currentStepTimerActive.value) return '结束当前步骤计时'
   return '结束现有计时'
+})
+const timerSecondaryActionText = computed(() => {
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '暂停'
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '继续'
+  return '暂不计时'
+})
+const timerStatusNote = computed(() => {
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '当前步骤正在计时，离开本页也会继续倒计时。'
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '当前步骤计时已暂停，可再次打开配置继续。'
+  if (anotherStepTimerActive.value) return `当前正在计时的是“${store.kitchenTimer.context?.dishName || '另一道菜'}”第 ${store.kitchenTimer.context?.stepNo || 1} 步。`
+  return '点击右上角“计时”可以弹出配置窗口，避免和步骤操作混在一起。'
+})
+const timerDialogTitle = computed(() => {
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return `调整第 ${currentStep.value?.stepNo || 1} 步计时`
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return `继续第 ${currentStep.value?.stepNo || 1} 步计时`
+  return `配置第 ${currentStep.value?.stepNo || 1} 步计时`
+})
+const timerDialogSub = computed(() => {
+  if (anotherStepTimerActive.value) return '当前全局只有一个步骤计时器，切换后会结束上一段计时。'
+  return '把计时设置放进独立弹窗里，步骤阅读和下一步操作不会再互相打断。'
+})
+const timerConflictText = computed(() => {
+  if (!anotherStepTimerActive.value) return ''
+  const context = store.kitchenTimer.context
+  return `${context?.dishName || '另一道菜'} · 第 ${context?.stepNo || 1} 步“${context?.stepTitle || '当前步骤'}”正在计时，新的步骤计时会直接切换过去。`
 })
 
 function goBack() {
@@ -268,49 +306,53 @@ function next() {
 function finish() {
   if (!item.value) return
   store.completeDish(item.value.id)
-  uni.navigateTo({ url: `/pages/upload/index?itemId=${item.value.id}` })
+  uni.navigateTo({ url: `/pages/upload/index?itemId=${item.value.id}&dishId=${item.value.dishId}` })
 }
 
 watch(
   () => [item.value?.currentStep, currentStep.value?.minutes, currentStepTimerActive.value] as const,
   (payload) => {
-    if (!payload) return
-    const [, , active] = payload
-    if (active) {
-      customMinutes.value = String(Math.max(1, Math.round(store.kitchenTimer.durationMs / 60000)))
-      return
+  if (!payload) return
+  const [, , active] = payload
+  if (active) {
+    customMinutes.value = String(Math.max(1, Math.round(store.kitchenTimer.durationMs / 60000)))
+    return
     }
     syncTimerDraftFromStep()
   },
   { immediate: true }
 )
 
-function toggleTimerPanel() {
-  if (timerPanelExpanded.value) {
-    timerPanelExpanded.value = false
-    return
-  }
+function openTimerDialog() {
   syncTimerDraftFromStep()
-  timerPanelExpanded.value = true
+  timerDialogVisible.value = true
 }
 
-function collapseTimerPanel() {
-  timerPanelExpanded.value = false
+function closeTimerDialog() {
+  timerDialogVisible.value = false
 }
 
 async function applyStepTimer() {
   if (!item.value || !currentStep.value) return
   const minutes = timerDraftMinutes.value
+  if (anotherStepTimerActive.value) {
+    try {
+      await confirmSwitchExistingTimer()
+    } catch {
+      return
+    }
+  }
   await primeKitchenTimerAlert()
   uni.hideKeyboard()
   store.startStepKitchenTimer(item.value.id, minutes)
-  timerPanelExpanded.value = true
+  timerDialogVisible.value = false
   uni.showToast({ title: `已为第 ${currentStep.value.stepNo} 步开始 ${minutes} 分钟计时`, icon: 'none' })
 }
 
 async function resumeStepTimer() {
   await primeKitchenTimerAlert()
   store.resumeKitchenTimer()
+  timerDialogVisible.value = false
   uni.showToast({ title: '继续当前计时', icon: 'none' })
 }
 
@@ -322,7 +364,20 @@ function pauseStepTimer() {
 function resetTimer() {
   store.resetKitchenTimer()
   syncTimerDraftFromStep()
+  timerDialogVisible.value = false
   uni.showToast({ title: '已结束当前计时', icon: 'none' })
+}
+
+function handleTimerSecondaryAction() {
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') {
+    pauseStepTimer()
+    return
+  }
+  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') {
+    resumeStepTimer()
+    return
+  }
+  closeTimerDialog()
 }
 
 function pickPreset(minutes: number) {
@@ -336,6 +391,26 @@ function normalizeCustomMinutesInput() {
 
 function syncTimerDraftFromStep() {
   customMinutes.value = String(defaultStepMinutes())
+}
+
+function confirmSwitchExistingTimer() {
+  return new Promise<void>((resolve, reject) => {
+    uni.showModal({
+      title: '切换步骤计时',
+      content: timerConflictText.value || '当前已有其他步骤在计时，继续后会切换到当前步骤。',
+      confirmText: '继续切换',
+      cancelText: '先不切换',
+      confirmColor: '#ff7b25',
+      success: (result) => {
+        if (result.confirm) {
+          resolve()
+          return
+        }
+        reject(new Error('cancelled'))
+      },
+      fail: () => reject(new Error('cancelled'))
+    })
+  })
 }
 
 function defaultStepMinutes() {
@@ -577,7 +652,132 @@ function formatDuration(durationMs: number) {
   line-height: 1.45;
 }
 
+.timer-status-note {
+  margin-top: 18rpx;
+  padding: 18rpx 20rpx 0;
+}
+
+.timer-status-note text {
+  display: block;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.timer-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+}
+
+.timer-dialog-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(48, 30, 20, 0.42);
+}
+
+.timer-dialog {
+  position: absolute;
+  left: 50%;
+  bottom: calc(28rpx + env(safe-area-inset-bottom));
+  width: calc(100% - 56rpx);
+  max-width: 402px;
+  padding: 30rpx 26rpx 26rpx;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 161, 101, 0.22), transparent 190rpx),
+    linear-gradient(180deg, #fffefc 0%, #fff7ef 100%);
+  transform: translateX(-50%);
+}
+
+.timer-dialog-glow {
+  position: absolute;
+  right: -26rpx;
+  top: -24rpx;
+  width: 190rpx;
+  height: 190rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 167, 102, 0.22) 0%, rgba(255, 167, 102, 0) 72%);
+}
+
+.timer-dialog-head {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 86rpx minmax(0, 1fr);
+  gap: 18rpx;
+  align-items: center;
+}
+
+.timer-dialog-badge {
+  width: 86rpx;
+  height: 86rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 26rpx;
+  background: rgba(255, 246, 237, 0.96);
+}
+
+.timer-dialog-badge image {
+  width: 46rpx;
+  height: 46rpx;
+}
+
+.timer-dialog-copy {
+  min-width: 0;
+}
+
+.timer-dialog-title,
+.timer-dialog-sub {
+  display: block;
+}
+
+.timer-dialog-title {
+  color: $text-main;
+  font-size: 31rpx;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.timer-dialog-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.timer-conflict-note {
+  position: relative;
+  z-index: 1;
+  margin-top: 20rpx;
+  padding: 20rpx 18rpx;
+  border: 1rpx solid rgba(255, 202, 169, 0.92);
+  border-radius: 22rpx;
+  background: rgba(255, 252, 247, 0.94);
+}
+
+.timer-conflict-title,
+.timer-conflict-sub {
+  display: block;
+}
+
+.timer-conflict-title {
+  color: $primary;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.timer-conflict-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
 .timer-editor {
+  position: relative;
+  z-index: 1;
   margin-top: 22rpx;
 }
 

@@ -884,19 +884,15 @@ app.post('/records', auth, async (req: AuthedRequest, res) => {
     return
   }
 
-  if (body.menuItemId) {
-    const item = await findMenuItemForUser(body.menuItemId, req.user!.id)
-    if (!item) {
-      res.status(404).json({ message: 'Menu item not found' })
-      return
-    }
-  }
+  const menuItemId = body.menuItemId
+    ? (await findMenuItemForUser(body.menuItemId, req.user!.id))?.id
+    : undefined
 
   const record = await prisma.cookRecord.create({
     data: {
       userId: req.user!.id,
       dishId: body.dishId,
-      menuItemId: body.menuItemId,
+      menuItemId,
       actualMinutes: body.actualMinutes,
       photos: JSON.stringify(body.photos),
       tasteFeedback: body.tasteFeedback,

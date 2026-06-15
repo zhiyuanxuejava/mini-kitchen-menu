@@ -72,7 +72,9 @@ const visibleItems = computed(() => store.menuDishes.filter((item) => item.cookS
 function handleAction(itemId: string, status: CookStatus) {
   if (status === 'done') {
     active.value = 'done'
-    uni.navigateTo({ url: `/pages/upload/index?itemId=${itemId}` })
+    const item = store.menu.items.find((candidate) => candidate.id === itemId)
+    const query = item ? `itemId=${itemId}&dishId=${item.dishId}` : `itemId=${itemId}`
+    uni.navigateTo({ url: `/pages/upload/index?${query}` })
     return
   }
   active.value = 'cooking'

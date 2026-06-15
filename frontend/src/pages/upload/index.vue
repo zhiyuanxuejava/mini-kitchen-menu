@@ -93,6 +93,7 @@ onShow(() => {
 
 const item = computed(() => store.menu.items.find((candidate) => candidate.id === itemId.value))
 const dish = computed(() => store.getDish(item.value?.dishId || dishId.value || 'hongshaorou'))
+const resolvedMenuItemId = computed(() => (item.value?.id ? item.value.id : undefined))
 
 watch(
   dish,
@@ -114,7 +115,7 @@ async function submit() {
   try {
     const recordId = await store.createCookRecord({
       dishId: dish.value.id,
-      menuItemId: itemId.value || undefined,
+      menuItemId: resolvedMenuItemId.value,
       actualMinutes: Number(actualMinutes.value) || dish.value.estimatedMinutes,
       photos: photos.value,
       tasteFeedback: taste.value,
