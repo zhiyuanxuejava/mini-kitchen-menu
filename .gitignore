@@ -63,3 +63,10 @@ output/*
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+
+# Release bundles
+release/
+*.tar.gz
+*.tgz
+*.zip
+*.7z

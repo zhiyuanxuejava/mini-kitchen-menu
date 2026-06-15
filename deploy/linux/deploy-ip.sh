@@ -183,6 +183,14 @@ generate_prisma_client() {
   )
 }
 
+prepare_frontend_config() {
+  echo "Preparing frontend manifest files..."
+  (
+    cd "$APP_DIR"
+    node ./scripts/prepare-wechat-config.mjs
+  )
+}
+
 build_project() {
   echo "Building project..."
   (
@@ -446,6 +454,7 @@ install_nodejs_if_needed
 write_env_files
 install_node_dependencies
 generate_prisma_client
+prepare_frontend_config
 build_project
 ensure_writable_dirs
 install_systemd_service
