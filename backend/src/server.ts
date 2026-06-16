@@ -539,18 +539,17 @@ app.post('/auth/register', async (req, res) => {
 app.post('/auth/login/email', async (req, res) => {
   const body = emailSchema.parse(req.body)
   const email = normalizeEmail(body.email)
-  let user = await prisma.user.findUnique({ where: { email } })
+  const user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    const passwordHash = await bcrypt.hash(body.password, 10)
-    user = await prisma.user.create({
-      data: { email, passwordHash, nickname: email.split('@')[0], role: roleForEmail(email) }
-    })
-  } else if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
-    res.status(401).json({ message: '邮箱或密码错误' })
+    res.status(404).json({ message: '该邮箱未注册', code: 'EMAIL_NOT_REGISTERED' })
     return
   }
-  user = await ensureConfiguredRole(user)
-  res.json({ token: sign(user), user: publicUser(user) })
+  if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
+    res.status(401).json({ message: '密码错误', code: 'PASSWORD_WRONG' })
+    return
+  }
+  const next = await ensureConfiguredRole(user)
+  res.json({ token: sign(next), user: publicUser(next) })
 })
 
 app.post('/auth/login/wechat', async (req, res) => {
