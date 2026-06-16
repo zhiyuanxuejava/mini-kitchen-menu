@@ -1,34 +1,43 @@
 <template>
-  <view v-if="showTimerAlert">
-    <view class="timer-alert-mask" @tap="dismissTimerAlert" />
-    <view class="timer-alert card" @tap.stop>
-      <view class="timer-alert-glow" />
+  <view v-if="showTimerAlerts">
+    <view class="timer-alert-mask" @tap="dismissTopAlert" />
 
-      <view class="timer-alert-head">
-        <view class="timer-alert-badge">
-          <image :src="icons.timer" mode="aspectFit" />
+    <view class="timer-alert-stack">
+      <view
+        v-for="(timer, index) in visibleAlerts"
+        :key="timer.id"
+        :class="['timer-alert', 'card', index === 0 ? 'is-front' : 'is-behind']"
+        :style="cardStyle(index)"
+        @tap.stop
+      >
+        <view class="timer-alert-glow" />
+
+        <view class="timer-alert-head">
+          <view class="timer-alert-badge">
+            <image :src="icons.timer" mode="aspectFit" />
+          </view>
+          <view class="timer-alert-copy">
+            <text class="timer-alert-title">计时结束</text>
+            <text class="timer-alert-main">{{ timerAlertTitle(timer) }}</text>
+          </view>
         </view>
-        <view class="timer-alert-copy">
-          <text class="timer-alert-title">计时结束</text>
-          <text class="timer-alert-main">{{ timerAlertTitle }}</text>
+
+        <view class="timer-alert-note">
+          <text class="timer-alert-step">{{ timerAlertStep(timer) }}</text>
+          <text class="timer-alert-sub">{{ timerAlertSubtitle(timer) }}</text>
         </view>
-      </view>
 
-      <view class="timer-alert-note">
-        <text class="timer-alert-step">{{ timerAlertStep }}</text>
-        <text class="timer-alert-sub">{{ timerAlertSubtitle }}</text>
-      </view>
-
-      <view class="timer-alert-actions">
-        <button class="ghost-btn" hover-class="tap" @tap="dismissTimerAlert">知道了</button>
-        <button
-          v-if="store.kitchenTimer.context?.type === 'step' && store.kitchenTimer.context?.itemId"
-          class="primary-btn"
-          hover-class="tap"
-          @tap="goTimerStep"
-        >
-          回到步骤
-        </button>
+        <view class="timer-alert-actions">
+          <button class="ghost-btn" hover-class="tap" @tap="dismissAlert(timer.id)">知道了</button>
+          <button
+            v-if="timer.context.type === 'step' && timer.context.itemId"
+            class="primary-btn"
+            hover-class="tap"
+            @tap="goTimerStep(timer.id, timer.context.itemId)"
+          >
+            回到步骤
+          </button>
+        </view>
       </view>
     </view>
   </view>
@@ -42,33 +51,16 @@ let activeOverlayId = ''
 import { computed, getCurrentInstance, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onHide, onShow } from '@dcloudio/uni-app'
 import { icons } from '@/data/assets'
+import type { KitchenTimer } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 import { playKitchenTimerAlert } from '@/utils/kitchen-timer-alert'
 
 const store = useKitchenStore()
-const showTimerAlert = ref(false)
+const showTimerAlerts = ref(false)
 const isActivePage = ref(false)
 const overlayId = `kitchen-timer-overlay-${getCurrentInstance()?.uid ?? Math.random().toString(16).slice(2)}`
-const timerMinutes = computed(() => Math.max(1, Math.round(store.kitchenTimer.durationMs / 60000)))
-const timerAlertTitle = computed(() => {
-  const context = store.kitchenTimer.context
-  if (context?.type === 'step') {
-    return `${context.dishName || '当前菜品'} · 第 ${context.stepNo || 1} 步`
-  }
-  return '厨房计时已完成'
-})
-const timerAlertStep = computed(() => {
-  const context = store.kitchenTimer.context
-  if (context?.type === 'step' && context.stepTitle) return context.stepTitle
-  return `${timerMinutes.value} 分钟提醒`
-})
-const timerAlertSubtitle = computed(() => {
-  const context = store.kitchenTimer.context
-  if (context?.type === 'step' && context.stepTitle) {
-    return `“${context.stepTitle}”设定的 ${timerMinutes.value} 分钟已到，请回到这一步继续操作。`
-  }
-  return `你设定的 ${timerMinutes.value} 分钟已到，记得及时查看锅里状态。`
-})
+const visibleAlerts = computed(() => store.pendingKitchenTimerAlerts.slice(0, 3))
+const alertIdsSignature = computed(() => store.pendingKitchenTimerAlerts.map((timer) => timer.id).join('|'))
 
 onMounted(markActive)
 onShow(markActive)
@@ -76,28 +68,25 @@ onHide(markInactive)
 onBeforeUnmount(markInactive)
 
 watch(
-  () => [store.kitchenTimer.alertPending, isActivePage.value] as const,
-  ([pending, active]) => {
-    if (!pending || !active) return
-    showTimerAlert.value = true
-    playKitchenTimerAlert()
+  () => [alertIdsSignature.value, isActivePage.value] as const,
+  ([signature, active], previous) => {
+    const prevSignature = previous?.[0]
+    if (!signature || !active) {
+      showTimerAlerts.value = false
+      return
+    }
+
+    showTimerAlerts.value = true
+    if (signature !== prevSignature) playKitchenTimerAlert()
   },
   { immediate: true }
-)
-
-watch(
-  () => store.kitchenTimer.alertPending,
-  (value) => {
-    if (value) return
-    showTimerAlert.value = false
-  }
 )
 
 function markActive() {
   activeOverlayId = overlayId
   isActivePage.value = true
-  if (store.kitchenTimer.alertPending) {
-    showTimerAlert.value = true
+  if (store.pendingKitchenTimerAlerts.length) {
+    showTimerAlerts.value = true
     playKitchenTimerAlert()
   }
 }
@@ -107,15 +96,19 @@ function markInactive() {
   isActivePage.value = false
 }
 
-function dismissTimerAlert() {
-  showTimerAlert.value = false
-  store.acknowledgeKitchenTimerAlert()
+function dismissTopAlert() {
+  const first = visibleAlerts.value[0]
+  if (!first) return
+  dismissAlert(first.id)
 }
 
-function goTimerStep() {
-  const itemId = store.kitchenTimer.context?.itemId
-  dismissTimerAlert()
-  if (!itemId) return
+function dismissAlert(timerId: string) {
+  store.acknowledgeKitchenTimerAlert(timerId)
+  showTimerAlerts.value = store.pendingKitchenTimerAlerts.length > 0
+}
+
+function goTimerStep(timerId: string, itemId: string) {
+  dismissAlert(timerId)
 
   const pages = getCurrentPages() as Array<{ route?: string; options?: Record<string, string> }>
   const currentPage = pages[pages.length - 1]
@@ -123,29 +116,72 @@ function goTimerStep() {
 
   uni.navigateTo({ url: `/pages/cook-step/index?itemId=${itemId}` })
 }
+
+function timerMinutes(timer: KitchenTimer) {
+  return Math.max(1, Math.round(timer.durationMs / 60000))
+}
+
+function timerAlertTitle(timer: KitchenTimer) {
+  if (timer.context.type === 'step') return `${timer.context.dishName || '当前菜品'} · 第 ${timer.context.stepNo || 1} 步`
+  return '厨房计时已完成'
+}
+
+function timerAlertStep(timer: KitchenTimer) {
+  if (timer.context.type === 'step' && timer.context.stepTitle) return timer.context.stepTitle
+  return `${timerMinutes(timer)} 分钟提醒`
+}
+
+function timerAlertSubtitle(timer: KitchenTimer) {
+  if (timer.context.type === 'step' && timer.context.stepTitle) {
+    return `“${timer.context.stepTitle}”设定的 ${timerMinutes(timer)} 分钟已到，请回到这一步继续操作。`
+  }
+  return `你设定的 ${timerMinutes(timer)} 分钟已到，记得及时查看锅里状态。`
+}
+
+function cardStyle(index: number) {
+  return {
+    transform: `translateY(${index * 22}rpx) scale(${1 - index * 0.03})`,
+    opacity: `${1 - index * 0.12}`,
+    zIndex: `${60 - index}`
+  }
+}
 </script>
 
 <style scoped lang="scss">
 .timer-alert-mask {
   position: fixed;
   inset: 0;
-  z-index: 46;
+  z-index: 56;
   background: rgba(48, 30, 20, 0.42);
 }
 
-.timer-alert {
+.timer-alert-stack {
   position: fixed;
   left: 50%;
   top: 50%;
-  z-index: 47;
+  z-index: 57;
   width: calc(100% - 56rpx);
   max-width: 402px;
+  transform: translate(-50%, -50%);
+}
+
+.timer-alert {
+  position: absolute;
+  inset: 0;
   padding: 34rpx 28rpx 28rpx;
   overflow: hidden;
   background:
     radial-gradient(circle at 16% 18%, rgba(255, 166, 108, 0.28), transparent 180rpx),
     linear-gradient(180deg, #fffefc 0%, #fff7ef 100%);
-  transform: translate(-50%, -50%);
+  transform-origin: center top;
+}
+
+.timer-alert.is-front {
+  box-shadow: 0 24rpx 40rpx rgba(68, 35, 16, 0.16);
+}
+
+.timer-alert.is-behind {
+  pointer-events: none;
 }
 
 .timer-alert-glow {

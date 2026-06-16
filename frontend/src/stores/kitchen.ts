@@ -22,7 +22,12 @@ import type {
 const LEGACY_STORAGE_KEY = 'zhangshao-menu-state'
 const AUTH_STORAGE_KEY = 'zhangshao-menu-auth'
 const CACHE_STORAGE_KEY = 'zhangshao-menu-cache'
-const PROTOTYPE_MENU_DISH_IDS = ['hongshaorou', 'tomato-egg', 'seaweed-egg-soup', 'shredded-potato']
+const LEGACY_PROTOTYPE_MENU_ITEMS: Array<Pick<MenuItem, 'dishId' | 'quantity' | 'note' | 'cookStatus' | 'currentStep'>> = [
+  { dishId: 'hongshaorou', quantity: 1, note: '少甜、少油', cookStatus: 'pending', currentStep: 1 },
+  { dishId: 'tomato-egg', quantity: 1, note: '多番茄', cookStatus: 'cooking', currentStep: 2 },
+  { dishId: 'seaweed-egg-soup', quantity: 1, note: '清淡', cookStatus: 'pending', currentStep: 1 },
+  { dishId: 'shredded-potato', quantity: 1, note: '少辣', cookStatus: 'done', currentStep: 4 }
+]
 const LEGACY_DISH_NAMES: Record<string, string> = {
   hongshaorou: '红烧肉',
   'mapo-tofu': '麻婆豆腐',
@@ -111,8 +116,8 @@ function compareDishSearchRows(left: DishSearchRow, right: DishSearchRow) {
 }
 
 interface KitchenTimerTickerStore {
-  kitchenTimer: KitchenTimer
-  finishKitchenTimer: () => void
+  kitchenTimers: KitchenTimer[]
+  syncKitchenTimers: () => void
 }
 
 let kitchenTimerTicker: ReturnType<typeof setInterval> | undefined
@@ -121,9 +126,8 @@ function ensureKitchenTimerTicker(store: KitchenTimerTickerStore) {
   if (kitchenTimerTicker) return
 
   kitchenTimerTicker = setInterval(() => {
-    if (store.kitchenTimer.status !== 'running' || !store.kitchenTimer.endAt) return
-    if (store.kitchenTimer.endAt > Date.now()) return
-    store.finishKitchenTimer()
+    if (!store.kitchenTimers.some((timer) => timer.status === 'running' && timer.endAt)) return
+    store.syncKitchenTimers()
   }, 1000)
 }
 
@@ -138,7 +142,7 @@ interface KitchenState {
   menu: TodayMenu
   records: CookRecord[]
   ratings: Rating[]
-  kitchenTimer: KitchenTimer
+  kitchenTimers: KitchenTimer[]
 }
 
 interface PersistedAuthState {
@@ -152,82 +156,216 @@ interface PersistedKitchenCache {
   menu?: TodayMenu
   records?: CookRecord[]
   ratings?: Rating[]
+  kitchenTimers?: KitchenTimer[]
   kitchenTimer?: KitchenTimer
 }
 
 type PersistedKitchenState = PersistedAuthState & PersistedKitchenCache
 
-function defaultKitchenTimer(): KitchenTimer {
+const DEFAULT_KITCHEN_TIMER_DURATION_MS = 15 * 60 * 1000
+
+function defaultKitchenTimerContext(): KitchenTimer['context'] {
+  return { type: 'manual' }
+}
+
+function normalizeKitchenTimerContext(context?: KitchenTimer['context'] | null): KitchenTimer['context'] {
+  const type: KitchenTimerContextType = context?.type === 'step' ? 'step' : 'manual'
+  const stepNo = Number(context?.stepNo)
   return {
-    status: 'idle',
-    durationMs: 15 * 60 * 1000,
-    remainingMs: 15 * 60 * 1000,
-    alertPending: false,
-    context: { type: 'manual' }
+    type,
+    itemId: typeof context?.itemId === 'string' && context.itemId ? context.itemId : undefined,
+    dishId: typeof context?.dishId === 'string' && context.dishId ? context.dishId : undefined,
+    dishName: typeof context?.dishName === 'string' && context.dishName ? context.dishName : undefined,
+    stepNo: Number.isFinite(stepNo) && stepNo > 0 ? Math.round(stepNo) : undefined,
+    stepTitle: typeof context?.stepTitle === 'string' && context.stepTitle ? context.stepTitle : undefined
   }
 }
 
-function normalizeKitchenTimer(timer?: KitchenTimer | null): KitchenTimer {
-  if (!timer || typeof timer !== 'object') return defaultKitchenTimer()
+function makeKitchenTimerScopeKey(context: KitchenTimer['context']) {
+  if (context.type === 'step' && context.dishId) return `step:${context.dishId}`
+  if (context.type === 'manual' && context.dishId) return `manual:${context.dishId}`
+  return `${context.type}:global`
+}
 
-  const durationMs = Math.max(60 * 1000, Number(timer.durationMs) || defaultKitchenTimer().durationMs)
-  const fallbackRemaining = Math.max(0, Math.min(durationMs, Number(timer.remainingMs) || durationMs))
+function defaultKitchenTimer(timer?: Partial<KitchenTimer>): KitchenTimer {
+  const now = Date.now()
+  const context = normalizeKitchenTimerContext(timer?.context)
+  const durationMs = Math.max(60 * 1000, Number(timer?.durationMs) || DEFAULT_KITCHEN_TIMER_DURATION_MS)
+  return {
+    id: typeof timer?.id === 'string' && timer.id ? timer.id : makeId('timer'),
+    scopeKey: typeof timer?.scopeKey === 'string' && timer.scopeKey ? timer.scopeKey : makeKitchenTimerScopeKey(context),
+    status: timer?.status === 'running' || timer?.status === 'paused' || timer?.status === 'finished' ? timer.status : 'idle',
+    durationMs,
+    remainingMs: Math.max(0, Math.min(durationMs, Number(timer?.remainingMs) || durationMs)),
+    endAt: typeof timer?.endAt === 'number' ? timer.endAt : undefined,
+    lastFinishedAt: typeof timer?.lastFinishedAt === 'number' ? timer.lastFinishedAt : undefined,
+    alertPending: Boolean(timer?.alertPending),
+    createdAt: typeof timer?.createdAt === 'number' ? timer.createdAt : now,
+    updatedAt: typeof timer?.updatedAt === 'number' ? timer.updatedAt : now,
+    context
+  }
+}
+
+function normalizeKitchenTimer(timer?: Partial<KitchenTimer> | null, now = Date.now()): KitchenTimer | null {
+  if (!timer || typeof timer !== 'object') return null
+
+  const fallback = defaultKitchenTimer(timer)
+  const durationMs = Math.max(60 * 1000, Number(timer.durationMs) || fallback.durationMs)
   const endAt = typeof timer.endAt === 'number' ? timer.endAt : undefined
+  const remainingMs = Math.max(0, Math.min(durationMs, Number(timer.remainingMs) || durationMs))
+  const context = normalizeKitchenTimerContext(timer.context)
+  const base: KitchenTimer = {
+    id: typeof timer.id === 'string' && timer.id ? timer.id : fallback.id,
+    scopeKey: typeof timer.scopeKey === 'string' && timer.scopeKey ? timer.scopeKey : makeKitchenTimerScopeKey(context),
+    status: fallback.status,
+    durationMs,
+    remainingMs,
+    lastFinishedAt: typeof timer.lastFinishedAt === 'number' ? timer.lastFinishedAt : undefined,
+    alertPending: Boolean(timer.alertPending),
+    createdAt: typeof timer.createdAt === 'number' ? timer.createdAt : fallback.createdAt,
+    updatedAt: typeof timer.updatedAt === 'number' ? timer.updatedAt : now,
+    context
+  }
 
-  if (timer.status === 'running' && endAt) {
-    const remainingMs = Math.max(0, endAt - Date.now())
-    if (remainingMs > 0) {
+  if (fallback.status === 'running' && endAt) {
+    const nextRemainingMs = Math.max(0, endAt - now)
+    if (nextRemainingMs > 0) {
       return {
-        status: 'running' as const,
-        durationMs,
-        remainingMs,
-        endAt,
-        lastFinishedAt: timer.lastFinishedAt,
-        alertPending: Boolean(timer.alertPending),
-        context: timer.context || { type: 'manual' }
+        ...base,
+        status: 'running',
+        remainingMs: nextRemainingMs,
+        endAt
       }
     }
 
     return {
-      status: 'finished' as const,
-      durationMs,
-      remainingMs: 0,
-      lastFinishedAt: Date.now(),
-      alertPending: true,
-      context: timer.context || { type: 'manual' }
-    }
-  }
-
-  if (timer.status === 'paused') {
-    return {
-      status: 'paused',
-      durationMs,
-      remainingMs: fallbackRemaining,
-      lastFinishedAt: timer.lastFinishedAt,
-      alertPending: false,
-      context: timer.context || { type: 'manual' }
-    }
-  }
-
-  if (timer.status === 'finished') {
-    return {
+      ...base,
       status: 'finished',
-      durationMs,
       remainingMs: 0,
-      lastFinishedAt: timer.lastFinishedAt || Date.now(),
-      alertPending: Boolean(timer.alertPending),
-      context: timer.context || { type: 'manual' }
+      endAt: undefined,
+      lastFinishedAt: base.lastFinishedAt || now,
+      updatedAt: now,
+      alertPending: true
+    }
+  }
+
+  if (fallback.status === 'paused') {
+    return {
+      ...base,
+      status: 'paused',
+      endAt: undefined,
+      alertPending: false
+    }
+  }
+
+  if (fallback.status === 'finished') {
+    return {
+      ...base,
+      status: 'finished',
+      remainingMs: 0,
+      endAt: undefined,
+      lastFinishedAt: base.lastFinishedAt || now
     }
   }
 
   return {
+    ...base,
     status: 'idle',
-    durationMs,
-    remainingMs: durationMs,
-    lastFinishedAt: timer.lastFinishedAt,
-    alertPending: false,
-    context: timer.context || { type: 'manual' }
+    endAt: undefined,
+    alertPending: false
   }
+}
+
+function timerStatusPriority(status: KitchenTimer['status']) {
+  if (status === 'running') return 4
+  if (status === 'paused') return 3
+  if (status === 'finished') return 2
+  return 1
+}
+
+function sortKitchenTimers(left: KitchenTimer, right: KitchenTimer) {
+  const statusGap = timerStatusPriority(right.status) - timerStatusPriority(left.status)
+  if (statusGap) return statusGap
+  const leftTime = left.status === 'finished' ? left.lastFinishedAt || 0 : left.endAt || left.updatedAt || 0
+  const rightTime = right.status === 'finished' ? right.lastFinishedAt || 0 : right.endAt || right.updatedAt || 0
+  return rightTime - leftTime
+}
+
+function timerStateSignature(timer: KitchenTimer) {
+  return [
+    timer.id,
+    timer.scopeKey,
+    timer.status,
+    timer.durationMs,
+    timer.remainingMs,
+    timer.endAt || 0,
+    timer.lastFinishedAt || 0,
+    timer.alertPending ? 1 : 0,
+    timer.createdAt,
+    timer.updatedAt,
+    timer.context.type,
+    timer.context.itemId || '',
+    timer.context.dishId || '',
+    timer.context.dishName || '',
+    timer.context.stepNo || 0,
+    timer.context.stepTitle || ''
+  ].join('|')
+}
+
+function normalizeKitchenTimers(
+  timers: Array<Partial<KitchenTimer> | null | undefined> | undefined,
+  menuItems: MenuItem[],
+  dishes: Dish[]
+) {
+  const now = Date.now()
+  const menuItemMap = new Map(menuItems.map((item) => [item.id, item]))
+  const dishMap = new Map(dishes.map((dish) => [dish.id, dish]))
+  const deduped = new Map<string, KitchenTimer>()
+
+  for (const rawTimer of timers || []) {
+    const normalized = normalizeKitchenTimer(rawTimer, now)
+    if (!normalized) continue
+
+    const item = normalized.context.itemId ? menuItemMap.get(normalized.context.itemId) : undefined
+    const dishId = item?.dishId || normalized.context.dishId
+    if (normalized.context.type === 'step' && (!dishId || !dishMap.has(dishId))) continue
+    if (normalized.context.type === 'step' && normalized.context.itemId && !item) continue
+
+    const dish = dishId ? dishMap.get(dishId) : undefined
+    const stepNo = Math.max(1, normalized.context.stepNo || item?.currentStep || 1)
+    const stepTitle = dish?.steps?.find((step) => step.stepNo === stepNo)?.title || normalized.context.stepTitle
+    const context: KitchenTimer['context'] = {
+      ...normalized.context,
+      dishId,
+      dishName: dish?.name || normalized.context.dishName,
+      itemId: item?.id || normalized.context.itemId,
+      stepNo,
+      stepTitle
+    }
+
+    const nextTimer: KitchenTimer = {
+      ...normalized,
+      scopeKey: makeKitchenTimerScopeKey(context),
+      context
+    }
+
+    if (nextTimer.status === 'idle' && !nextTimer.alertPending) continue
+    if (nextTimer.status === 'finished' && !nextTimer.alertPending) continue
+
+    const existed = deduped.get(nextTimer.scopeKey)
+    if (!existed) {
+      deduped.set(nextTimer.scopeKey, nextTimer)
+      continue
+    }
+
+    const shouldReplace =
+      timerStatusPriority(nextTimer.status) > timerStatusPriority(existed.status) ||
+      (timerStatusPriority(nextTimer.status) === timerStatusPriority(existed.status) && nextTimer.updatedAt >= existed.updatedAt)
+
+    if (shouldReplace) deduped.set(nextTimer.scopeKey, nextTimer)
+  }
+
+  return [...deduped.values()].sort(sortKitchenTimers)
 }
 
 function normalizeCachedUser(user: UserProfile | null) {
@@ -277,25 +415,57 @@ function canUserEditDish(dish: Dish, user: UserProfile | null) {
   return sourceTypeOf(dish) === 'user_created' && Boolean(user?.id) && dish.ownerUserId === user?.id
 }
 
-function menuNeedsRepair(menu: TodayMenu, dishes: Dish[]) {
-  if (!menu.items.length || !dishes.length) return false
-  const ids = new Set(dishes.map((dish) => dish.id))
-  return menu.items.some((item) => !ids.has(item.dishId))
+function normalizeCookStatus(status: unknown): CookStatus {
+  return status === 'cooking' || status === 'done' ? status : 'pending'
 }
 
-function menuFromDishes(dishes: Dish[]) {
-  const selected = dishes.slice(0, 4)
-  return {
-    ...defaultMenu(),
-    items: selected.map((dish, index) => ({
-      id: makeId('item'),
-      dishId: dish.id,
-      quantity: 1,
-      note: '',
+function isLegacyPrototypeMenu(menu?: TodayMenu | null) {
+  if (!menu || menu.servings !== 3 || menu.status !== 'draft' || menu.items.length !== LEGACY_PROTOTYPE_MENU_ITEMS.length) return false
+
+  const items = [...menu.items].sort((left, right) => left.sortOrder - right.sortOrder)
+  const matchesPrototypeItems = LEGACY_PROTOTYPE_MENU_ITEMS.every((legacyItem, index) => {
+    const current = items[index]
+    if (!current) return false
+    return (
+      current.dishId === legacyItem.dishId &&
+      current.quantity === legacyItem.quantity &&
+      current.note === legacyItem.note &&
+      current.cookStatus === legacyItem.cookStatus &&
+      current.currentStep === legacyItem.currentStep
+    )
+  })
+
+  return matchesPrototypeItems && Boolean(items[1]?.startedAt) && Boolean(items[3]?.startedAt) && items[3]?.finishedAt === '10:20'
+}
+
+function normalizeMenu(menu?: TodayMenu | null, dishes: Dish[] = []): TodayMenu {
+  const fallback = defaultMenu()
+  if (!menu || typeof menu !== 'object' || isLegacyPrototypeMenu(menu)) return fallback
+
+  const availableDishIds = dishes.length ? new Set(dishes.map((dish) => dish.id)) : null
+  const items = (Array.isArray(menu.items) ? [...menu.items] : [])
+    .filter((item): item is MenuItem => Boolean(item && typeof item === 'object' && typeof item.dishId === 'string' && item.dishId))
+    .sort((left, right) => (Number(left.sortOrder) || 0) - (Number(right.sortOrder) || 0))
+    .filter((item) => !availableDishIds || availableDishIds.has(item.dishId))
+    .map<MenuItem>((item, index) => ({
+      id: typeof item.id === 'string' && item.id ? item.id : makeId('item'),
+      dishId: item.dishId,
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      note: typeof item.note === 'string' ? item.note : '',
       sortOrder: index + 1,
-      cookStatus: 'pending' as CookStatus,
-      currentStep: 1
+      cookStatus: normalizeCookStatus(item.cookStatus),
+      currentStep: Math.max(1, Number(item.currentStep) || 1),
+      startedAt: typeof item.startedAt === 'string' ? item.startedAt : undefined,
+      finishedAt: typeof item.finishedAt === 'string' ? item.finishedAt : undefined
     }))
+
+  return {
+    ...fallback,
+    id: typeof menu.id === 'string' && menu.id ? menu.id : fallback.id,
+    menuDate: typeof menu.menuDate === 'string' && menu.menuDate ? menu.menuDate : fallback.menuDate,
+    servings: Math.max(1, Number(menu.servings) || fallback.servings),
+    status: items.length && menu.status === 'submitted' ? 'submitted' : 'draft',
+    items
   }
 }
 
@@ -332,12 +502,7 @@ function defaultMenu(): TodayMenu {
     menuDate: todayText(),
     servings: 3,
     status: 'draft',
-    items: [
-      { id: makeId('item'), dishId: 'hongshaorou', quantity: 1, note: '少甜、少油', sortOrder: 1, cookStatus: 'pending', currentStep: 1 },
-      { id: makeId('item'), dishId: 'tomato-egg', quantity: 1, note: '多番茄', sortOrder: 2, cookStatus: 'cooking', currentStep: 2, startedAt: nowText() },
-      { id: makeId('item'), dishId: 'seaweed-egg-soup', quantity: 1, note: '清淡', sortOrder: 3, cookStatus: 'pending', currentStep: 1 },
-      { id: makeId('item'), dishId: 'shredded-potato', quantity: 1, note: '少辣', sortOrder: 4, cookStatus: 'done', currentStep: 4, startedAt: nowText(), finishedAt: '10:20' }
-    ]
+    items: []
   }
 }
 
@@ -408,7 +573,7 @@ function initialState(): Omit<KitchenState, 'hydrated'> {
     menu: defaultMenu(),
     records: defaultRecords(),
     ratings: defaultRatings(),
-    kitchenTimer: defaultKitchenTimer()
+    kitchenTimers: []
   }
 }
 
@@ -468,13 +633,6 @@ export const useKitchenStore = defineStore('kitchen', {
       return state.dishes.filter((dish) => Boolean(dish.learnedAt)).length
     },
     estimatedMinutes(state): number {
-      const menuIds = [...state.menu.items].sort((a, b) => a.sortOrder - b.sortOrder).map((item) => item.dishId)
-      const isPrototypeMenu =
-        state.menu.servings === 3 &&
-        menuIds.length === PROTOTYPE_MENU_DISH_IDS.length &&
-        menuIds.every((id, index) => id === PROTOTYPE_MENU_DISH_IDS[index])
-      if (isPrototypeMenu) return 75
-
       return state.menu.items.reduce((sum, item) => {
         const dish = state.dishes.find((candidate) => candidate.id === item.dishId)
         return sum + (dish?.estimatedMinutes || 0)
@@ -496,9 +654,15 @@ export const useKitchenStore = defineStore('kitchen', {
         }))
         .filter((record) => record.dish)
     },
-    kitchenTimerRemaining(state) {
-      if (state.kitchenTimer.status !== 'running' || !state.kitchenTimer.endAt) return state.kitchenTimer.remainingMs
-      return Math.max(0, state.kitchenTimer.endAt - Date.now())
+    activeKitchenTimers(state) {
+      return state.kitchenTimers
+        .filter((timer) => timer.status === 'running' || timer.status === 'paused')
+        .sort(sortKitchenTimers)
+    },
+    pendingKitchenTimerAlerts(state) {
+      return state.kitchenTimers
+        .filter((timer) => timer.alertPending)
+        .sort((left, right) => (right.lastFinishedAt || 0) - (left.lastFinishedAt || 0))
     }
   },
   actions: {
@@ -509,7 +673,7 @@ export const useKitchenStore = defineStore('kitchen', {
         menu: this.menu,
         records: this.records,
         ratings: this.ratings,
-        kitchenTimer: this.kitchenTimer
+        kitchenTimers: this.kitchenTimers
       }
     },
     buildCompactCachePayload(): PersistedKitchenCache {
@@ -519,7 +683,7 @@ export const useKitchenStore = defineStore('kitchen', {
         menu: this.menu,
         records: this.token ? [] : defaultRecords(),
         ratings: this.token ? [] : defaultRatings(),
-        kitchenTimer: this.kitchenTimer
+        kitchenTimers: this.kitchenTimers
       }
     },
     persistAuth() {
@@ -551,7 +715,7 @@ export const useKitchenStore = defineStore('kitchen', {
       this.menu = next.menu
       this.records = next.records
       this.ratings = next.ratings
-      this.kitchenTimer = next.kitchenTimer
+      this.kitchenTimers = next.kitchenTimers
     },
     cacheSession(token: string, user: UserProfile) {
       this.token = token
@@ -587,152 +751,156 @@ export const useKitchenStore = defineStore('kitchen', {
         } else {
           this.dishes = prototypeSeedDishes
         }
-        this.menu = cacheSource.menu || defaultMenu()
+        this.menu = normalizeMenu(cacheSource.menu, this.dishes)
         this.records = Array.isArray(cacheSource.records) ? cacheSource.records : (this.token ? [] : defaultRecords())
         this.ratings = Array.isArray(cacheSource.ratings) ? cacheSource.ratings : (this.token ? [] : defaultRatings())
-        this.kitchenTimer = normalizeKitchenTimer(cacheSource.kitchenTimer)
+        this.kitchenTimers = normalizeKitchenTimers(
+          Array.isArray(cacheSource.kitchenTimers) ? cacheSource.kitchenTimers : cacheSource.kitchenTimer ? [cacheSource.kitchenTimer] : [],
+          this.menu.items,
+          this.dishes
+        )
       }
       this.hydrated = true
-      this.syncKitchenTimer()
+      this.syncKitchenTimers()
       ensureKitchenTimerTicker(this)
 
       if (legacyCache) {
         removePersistedObject(LEGACY_STORAGE_KEY)
-        this.persist()
       }
+      if (cacheSource || legacyCache) this.persist()
     },
     persist() {
       this.persistAuth()
       this.persistCache()
       removePersistedObject(LEGACY_STORAGE_KEY)
     },
-    syncKitchenTimer() {
-      const next = normalizeKitchenTimer(this.kitchenTimer)
-      const changed =
-        next.status !== this.kitchenTimer.status ||
-        next.durationMs !== this.kitchenTimer.durationMs ||
-        next.remainingMs !== this.kitchenTimer.remainingMs ||
-        next.endAt !== this.kitchenTimer.endAt ||
-        next.lastFinishedAt !== this.kitchenTimer.lastFinishedAt
-
-      if (!changed) return
-      this.kitchenTimer = next
+    activeTimerForScope(scopeKey: string) {
+      return this.kitchenTimers.find((timer) => timer.scopeKey === scopeKey)
+    },
+    getStepTimerByItem(itemId: string) {
+      return this.kitchenTimers.find((timer) => timer.context.type === 'step' && timer.context.itemId === itemId)
+    },
+    kitchenTimerRemaining(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer) return 0
+      if (timer.status === 'running' && timer.endAt) return Math.max(0, timer.endAt - Date.now())
+      return timer.remainingMs
+    },
+    upsertKitchenTimer(nextTimer: KitchenTimer) {
+      const index = this.kitchenTimers.findIndex((timer) => timer.id === nextTimer.id)
+      if (index >= 0) this.kitchenTimers.splice(index, 1, nextTimer)
+      else this.kitchenTimers.unshift(nextTimer)
+      this.kitchenTimers = [...this.kitchenTimers].sort(sortKitchenTimers)
+    },
+    removeKitchenTimer(timerId: string) {
+      this.kitchenTimers = this.kitchenTimers.filter((timer) => timer.id !== timerId)
+    },
+    syncKitchenTimers() {
+      const next = normalizeKitchenTimers(this.kitchenTimers, this.menu.items, this.dishes)
+      const before = this.kitchenTimers.map(timerStateSignature).join('||')
+      const after = next.map(timerStateSignature).join('||')
+      if (before === after) return
+      this.kitchenTimers = next
       this.persist()
     },
-    setKitchenTimerDuration(minutes: number) {
-      const durationMs = Math.max(60 * 1000, Math.round(Number(minutes) || 0) * 60 * 1000)
-      if (this.kitchenTimer.status === 'running') {
-        this.kitchenTimer = {
-          status: 'running',
-          durationMs,
-          remainingMs: durationMs,
-          endAt: Date.now() + durationMs,
-          alertPending: false,
-          context: this.kitchenTimer.context || { type: 'manual' }
-        }
-        this.persist()
-        return
-      }
-
-      const status = this.kitchenTimer.status === 'paused' ? 'paused' : 'idle'
-      this.kitchenTimer = {
-        status,
-        durationMs,
-        remainingMs: status === 'paused' ? Math.min(this.kitchenTimer.remainingMs, durationMs) : durationMs,
-        lastFinishedAt: this.kitchenTimer.lastFinishedAt,
-        alertPending: false,
-        context: this.kitchenTimer.context || { type: 'manual' }
-      }
-      this.persist()
-    },
-    startKitchenTimer(
-      minutes?: number,
-      context: KitchenTimer['context'] = { type: 'manual' }
-    ) {
-      const durationMs = Math.max(
-        60 * 1000,
-        typeof minutes === 'number' ? Math.round(minutes) * 60 * 1000 : this.kitchenTimer.durationMs || defaultKitchenTimer().durationMs
-      )
-      this.kitchenTimer = {
-        status: 'running',
-        durationMs,
-        remainingMs: durationMs,
-        endAt: Date.now() + durationMs,
-        alertPending: false,
-        context
-      }
-      ensureKitchenTimerTicker(this)
-      this.persist()
-    },
-    startStepKitchenTimer(itemId: string, minutes: number) {
+    buildStepTimerContext(itemId: string): KitchenTimer['context'] {
       const item = this.menu.items.find((candidate) => candidate.id === itemId)
       const dish = item ? this.getDish(item.dishId) : undefined
       const step = item && dish ? dish.steps[(item.currentStep || 1) - 1] : undefined
-
-      this.startKitchenTimer(minutes, {
+      return {
         type: 'step',
         itemId,
         dishId: dish?.id,
         dishName: dish?.name,
         stepNo: step?.stepNo || item?.currentStep,
         stepTitle: step?.title
-      })
-    },
-    pauseKitchenTimer() {
-      if (this.kitchenTimer.status !== 'running') return
-      const remainingMs = this.kitchenTimer.endAt ? Math.max(0, this.kitchenTimer.endAt - Date.now()) : this.kitchenTimer.remainingMs
-      this.kitchenTimer = {
-        status: remainingMs > 0 ? 'paused' : 'finished',
-        durationMs: this.kitchenTimer.durationMs,
-        remainingMs,
-        lastFinishedAt: remainingMs > 0 ? this.kitchenTimer.lastFinishedAt : Date.now(),
-        alertPending: remainingMs <= 0,
-        context: this.kitchenTimer.context || { type: 'manual' }
       }
+    },
+    startKitchenTimer(minutes: number | undefined, context: KitchenTimer['context'] = defaultKitchenTimerContext()) {
+      const normalizedContext = normalizeKitchenTimerContext(context)
+      const scopeKey = makeKitchenTimerScopeKey(normalizedContext)
+      const existed = this.activeTimerForScope(scopeKey)
+      const durationMs = Math.max(
+        60 * 1000,
+        typeof minutes === 'number' ? Math.round(minutes) * 60 * 1000 : existed?.durationMs || DEFAULT_KITCHEN_TIMER_DURATION_MS
+      )
+      const now = Date.now()
+      const nextTimer = defaultKitchenTimer({
+        id: existed?.id,
+        scopeKey,
+        status: 'running',
+        durationMs,
+        remainingMs: durationMs,
+        endAt: now + durationMs,
+        lastFinishedAt: existed?.lastFinishedAt,
+        alertPending: false,
+        createdAt: existed?.createdAt || now,
+        updatedAt: now,
+        context: normalizedContext
+      })
+      this.upsertKitchenTimer(nextTimer)
+      ensureKitchenTimerTicker(this)
+      this.persist()
+      return nextTimer
+    },
+    startStepKitchenTimer(itemId: string, minutes: number) {
+      return this.startKitchenTimer(minutes, this.buildStepTimerContext(itemId))
+    },
+    pauseKitchenTimer(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer || timer.status !== 'running') return
+      const remainingMs = timer.endAt ? Math.max(0, timer.endAt - Date.now()) : timer.remainingMs
+      this.upsertKitchenTimer({
+        ...timer,
+        status: remainingMs > 0 ? 'paused' : 'finished',
+        remainingMs,
+        endAt: undefined,
+        lastFinishedAt: remainingMs > 0 ? timer.lastFinishedAt : Date.now(),
+        updatedAt: Date.now(),
+        alertPending: remainingMs <= 0
+      })
       this.persist()
     },
-    resumeKitchenTimer() {
-      const remainingMs = Math.max(0, this.kitchenTimer.remainingMs)
-      if (this.kitchenTimer.status !== 'paused' || !remainingMs) return
-      this.kitchenTimer = {
+    resumeKitchenTimer(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer || timer.status !== 'paused') return
+      const remainingMs = Math.max(0, timer.remainingMs)
+      if (!remainingMs) return
+      this.upsertKitchenTimer({
+        ...timer,
         status: 'running',
-        durationMs: this.kitchenTimer.durationMs,
         remainingMs,
         endAt: Date.now() + remainingMs,
-        lastFinishedAt: this.kitchenTimer.lastFinishedAt,
-        alertPending: false,
-        context: this.kitchenTimer.context || { type: 'manual' }
-      }
+        updatedAt: Date.now(),
+        alertPending: false
+      })
       ensureKitchenTimerTicker(this)
       this.persist()
     },
-    resetKitchenTimer() {
-      this.kitchenTimer = {
-        status: 'idle',
-        durationMs: this.kitchenTimer.durationMs,
-        remainingMs: this.kitchenTimer.durationMs,
-        alertPending: false,
-        context: this.kitchenTimer.context || { type: 'manual' }
-      }
+    resetKitchenTimer(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer) return
+      this.removeKitchenTimer(timerId)
       this.persist()
     },
-    finishKitchenTimer() {
-      this.kitchenTimer = {
+    finishKitchenTimer(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer) return
+      this.upsertKitchenTimer({
+        ...timer,
         status: 'finished',
-        durationMs: this.kitchenTimer.durationMs,
         remainingMs: 0,
+        endAt: undefined,
         lastFinishedAt: Date.now(),
-        alertPending: true,
-        context: this.kitchenTimer.context || { type: 'manual' }
-      }
+        updatedAt: Date.now(),
+        alertPending: true
+      })
       this.persist()
     },
-    acknowledgeKitchenTimerAlert() {
-      if (!this.kitchenTimer.alertPending) return
-      this.kitchenTimer = {
-        ...this.kitchenTimer,
-        alertPending: false
-      }
+    acknowledgeKitchenTimerAlert(timerId: string) {
+      const timer = this.kitchenTimers.find((candidate) => candidate.id === timerId)
+      if (!timer?.alertPending) return
+      this.removeKitchenTimer(timerId)
       this.persist()
     },
     async runRemote<T>(task: () => Promise<T>) {
@@ -798,7 +966,7 @@ export const useKitchenStore = defineStore('kitchen', {
       this.records = records
       this.ratings = ratings
       this.stats = stats
-      if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      this.menu = normalizeMenu(this.menu, this.dishes)
       const repaired = repairRecordsForDishes(this.records, this.dishes)
       if (repaired.changed) this.records = repaired.records
       this.persist()
@@ -807,7 +975,7 @@ export const useKitchenStore = defineStore('kitchen', {
       if (!this.token) return
       const dishes = await this.runRemote(() => kitchenApi.listDishes(this.token))
       this.dishes = dishes
-      if (menuNeedsRepair(this.menu, this.dishes)) this.menu = menuFromDishes(this.dishes)
+      this.menu = normalizeMenu(this.menu, this.dishes)
       const repaired = repairRecordsForDishes(this.records, this.dishes)
       if (repaired.changed) this.records = repaired.records
       this.persist()

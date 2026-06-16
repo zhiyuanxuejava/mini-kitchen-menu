@@ -47,6 +47,30 @@
       <view class="timer-status-note">
         <text>{{ timerStatusNote }}</text>
       </view>
+
+      <view v-if="otherRunningTimers.length" class="timer-peer-list">
+        <view class="timer-peer-head">
+          <text>其他菜计时中</text>
+          <text>{{ otherRunningTimers.length }} 个并行提醒</text>
+        </view>
+
+        <button
+          v-for="timer in otherRunningTimers.slice(0, 3)"
+          :key="timer.id"
+          class="timer-peer-card"
+          hover-class="tap"
+          @tap="goPeerTimer(timer.context.itemId)"
+        >
+          <view class="timer-peer-copy">
+            <text class="timer-peer-title">{{ timer.context.dishName || '其他菜品' }}</text>
+            <text class="timer-peer-sub">第 {{ timer.context.stepNo || 1 }} 步 · {{ timer.context.stepTitle || '当前步骤' }}</text>
+          </view>
+          <view class="timer-peer-meta">
+            <text>{{ timer.status === 'paused' ? '已暂停' : formatDuration(store.kitchenTimerRemaining(timer.id)) }}</text>
+            <text>{{ timer.status === 'paused' ? '待继续' : '去查看' }}</text>
+          </view>
+        </button>
+      </view>
     </view>
 
     <view v-if="timerDialogVisible" class="timer-dialog-layer">
@@ -64,9 +88,9 @@
           </view>
         </view>
 
-        <view v-if="timerConflictText" class="timer-conflict-note">
-          <text class="timer-conflict-title">当前已有其他步骤计时</text>
-          <text class="timer-conflict-sub">{{ timerConflictText }}</text>
+        <view class="timer-parallel-note">
+          <text class="timer-parallel-title">计时规则</text>
+          <text class="timer-parallel-sub">同一道菜只保留 1 个计时器；不同菜品的计时会同时生效，刷新后也会继续显示。</text>
         </view>
 
         <view class="timer-editor">
@@ -138,6 +162,7 @@ import AppPage from '@/components/AppPage.vue'
 import StepCookCard from '@/components/StepCookCard.vue'
 import StepProgress from '@/components/StepProgress.vue'
 import { icons } from '@/data/assets'
+import type { KitchenTimer } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 import { primeKitchenTimerAlert } from '@/utils/kitchen-timer-alert'
 
@@ -155,7 +180,7 @@ onLoad((query) => {
 
 onShow(() => {
   store.hydrate()
-  store.syncKitchenTimer()
+  store.syncKitchenTimers()
   startClock()
   if (!store.user) {
     uni.reLaunch({ url: '/pages/login/index' })
@@ -187,102 +212,90 @@ const remainingMinutes = computed(() => {
   const currentIndex = Math.max(0, (item.value.currentStep || 1) - 1)
   return dish.value.steps.slice(currentIndex).reduce((sum, step) => sum + Math.max(0, step.minutes || 0), 0)
 })
-const currentStepTimerActive = computed(() => {
-  const context = store.kitchenTimer.context
-  return Boolean(
-    item.value &&
-    currentStep.value &&
-    context?.type === 'step' &&
-    context.itemId === item.value.id &&
-    context.stepNo === currentStep.value?.stepNo
-  )
-})
-const hasStepTimer = computed(() => store.kitchenTimer.context?.type === 'step' && store.kitchenTimer.status !== 'idle')
-const anotherStepTimerActive = computed(() => Boolean(hasStepTimer.value && !currentStepTimerActive.value))
-const globalTimerRemainingMs = computed(() => {
-  if (store.kitchenTimer.status === 'running' && store.kitchenTimer.endAt) {
-    return Math.max(0, store.kitchenTimer.endAt - now.value)
-  }
-  return store.kitchenTimer.remainingMs
+const stepTimer = computed(() => (item.value ? store.getStepTimerByItem(item.value.id) : undefined))
+const timerMatchesCurrentStep = computed(() => Boolean(stepTimer.value && currentStep.value && stepTimer.value.context.stepNo === currentStep.value.stepNo))
+const otherRunningTimers = computed(() => store.activeKitchenTimers.filter((timer) => timer.id !== stepTimer.value?.id))
+const stepTimerRemainingMs = computed(() => {
+  if (!stepTimer.value) return Math.max(0, timerDraftMinutes.value * 60 * 1000)
+  if (stepTimer.value.status === 'running' && stepTimer.value.endAt) return Math.max(0, stepTimer.value.endAt - now.value)
+  return stepTimer.value.remainingMs
 })
 const timerDraftMinutes = computed(() => normalizeMinutes(customMinutes.value) || defaultStepMinutes())
 const timerSummaryTitle = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return `第 ${currentStep.value?.stepNo} 步正在计时`
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return `第 ${currentStep.value?.stepNo} 步计时已暂停`
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'finished') return `第 ${currentStep.value?.stepNo} 步计时已结束`
-  if (anotherStepTimerActive.value) {
-    return `${store.kitchenTimer.context?.dishName || '另一道菜'} · 第 ${store.kitchenTimer.context?.stepNo || 1} 步正在计时`
-  }
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'running') return `第 ${currentStep.value?.stepNo} 步正在计时`
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'paused') return `第 ${currentStep.value?.stepNo} 步计时已暂停`
+  if (stepTimer.value?.status === 'running') return `当前菜品第 ${stepTimer.value.context.stepNo || 1} 步正在计时`
+  if (stepTimer.value?.status === 'paused') return `当前菜品第 ${stepTimer.value.context.stepNo || 1} 步计时已暂停`
+  if (otherRunningTimers.value.length) return `还有 ${otherRunningTimers.value.length} 个其他菜品计时中`
   return `为第 ${currentStep.value?.stepNo || 1} 步准备计时`
 })
 const timerSummarySub = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '离开当前页面也会继续倒计时，结束时会全局强提醒。'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '剩余时间已经保留，继续或重新设定都在本页完成。'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'finished') return '这一段步骤的提醒已完成，可以直接再来一轮。'
-  if (anotherStepTimerActive.value) return '当前已有别的步骤在计时，开始新计时前会先提示你确认切换。'
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'running') return '刷新页面或离开当前步骤，倒计时也会继续，结束时会全局弹出提醒。'
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'paused') return '这一步剩余时间已保留，继续或重新设定都在当前弹窗里完成。'
+  if (stepTimer.value?.status === 'running') return '同一道菜只保留一个计时器，当前设置新的步骤时间会直接覆盖这道菜原来的计时。'
+  if (stepTimer.value?.status === 'paused') return '这道菜已有暂停计时，可以继续，也可以按当前步骤重新设定。'
+  if (otherRunningTimers.value.length) return '不同菜品的定时可以同时进行，当前菜的计时不会影响其他菜。'
   return '默认带入当前步骤所需时间，适合焖、蒸、煮这类需要盯时间的操作。'
 })
 const timerToggleText = computed(() => {
   if (timerDialogVisible.value) return '配置中'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '调整'
+  if (stepTimer.value?.status === 'running' || stepTimer.value?.status === 'paused') return '管理'
   return '计时'
 })
 const timerHeroLabel = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '剩余时间'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '暂停在'
-  if (anotherStepTimerActive.value && store.kitchenTimer.status === 'running') return '当前已有'
+  if (stepTimer.value?.status === 'running') return '剩余时间'
+  if (stepTimer.value?.status === 'paused') return '暂停在'
+  if (otherRunningTimers.value.length) return '并行计时'
   return '建议时长'
 })
 const timerHeroValue = computed(() => {
-  if (hasStepTimer.value) return formatDuration(globalTimerRemainingMs.value)
+  if (stepTimer.value) return formatDuration(stepTimerRemainingMs.value)
+  if (otherRunningTimers.value.length) return `${otherRunningTimers.value.length} 个`
   return `${timerDraftMinutes.value} 分钟`
 })
 const timerHeroMetaTop = computed(() => {
-  if (currentStepTimerActive.value) return currentStep.value?.title || '当前步骤'
-  if (anotherStepTimerActive.value) return store.kitchenTimer.context?.stepTitle || `第 ${store.kitchenTimer.context?.stepNo || 1} 步`
+  if (stepTimer.value) return stepTimer.value.context.stepTitle || `第 ${stepTimer.value.context.stepNo || 1} 步`
+  if (otherRunningTimers.value.length) return `${otherRunningTimers.value[0]?.context.dishName || '其他菜品'} 等`
   return currentStep.value?.heat || '按步骤建议'
 })
 const timerHeroMetaBottom = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '结束后全局弹窗提醒'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '可直接继续当前计时'
-  if (anotherStepTimerActive.value) return '切换时会结束上一段步骤计时'
+  if (stepTimer.value?.status === 'running') return '同一道菜只保留 1 个计时器'
+  if (stepTimer.value?.status === 'paused') return '可继续，也可按新时长重开'
+  if (otherRunningTimers.value.length) return '不同菜品可以同时计时'
   return `默认填充 ${defaultStepMinutes()} 分钟`
 })
 const timerPrimaryActionText = computed(() => {
-  if (anotherStepTimerActive.value) return '确认切换并开始'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '按新时长重开'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '按新时长开始'
+  if (stepTimer.value?.status === 'running') return '按新时长重开'
+  if (stepTimer.value?.status === 'paused') return '按新时长开始'
   return '开始计时'
 })
-const canResetTimer = computed(() => hasStepTimer.value)
+const canResetTimer = computed(() => Boolean(stepTimer.value))
 const timerResetText = computed(() => {
-  if (currentStepTimerActive.value) return '结束当前步骤计时'
-  return '结束现有计时'
+  if (!stepTimer.value) return ''
+  return `结束“第 ${stepTimer.value.context.stepNo || 1} 步”计时`
 })
 const timerSecondaryActionText = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '暂停'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '继续'
+  if (stepTimer.value?.status === 'running') return '暂停'
+  if (stepTimer.value?.status === 'paused') return '继续'
   return '暂不计时'
 })
 const timerStatusNote = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return '当前步骤正在计时，离开本页也会继续倒计时。'
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return '当前步骤计时已暂停，可再次打开配置继续。'
-  if (anotherStepTimerActive.value) return `当前正在计时的是“${store.kitchenTimer.context?.dishName || '另一道菜'}”第 ${store.kitchenTimer.context?.stepNo || 1} 步。`
-  return '点击右上角“计时”可以弹出配置窗口，避免和步骤操作混在一起。'
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'running') return '当前步骤正在计时，页面刷新后也会继续显示。'
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'paused') return '当前步骤计时已暂停，再次打开配置就能继续。'
+  if (stepTimer.value?.status === 'running') return `这道菜当前在计时的是第 ${stepTimer.value.context.stepNo || 1} 步“${stepTimer.value.context.stepTitle || '当前步骤'}”。`
+  if (stepTimer.value?.status === 'paused') return `这道菜已有暂停中的第 ${stepTimer.value.context.stepNo || 1} 步计时。`
+  if (otherRunningTimers.value.length) return `当前还有 ${otherRunningTimers.value.length} 道其他菜在计时，提醒会一起弹出并可逐条处理。`
+  return '点击右上角“计时”会弹出独立配置窗口，避免和步骤操作混在一起。'
 })
 const timerDialogTitle = computed(() => {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') return `调整第 ${currentStep.value?.stepNo || 1} 步计时`
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') return `继续第 ${currentStep.value?.stepNo || 1} 步计时`
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'running') return `调整第 ${currentStep.value?.stepNo || 1} 步计时`
+  if (timerMatchesCurrentStep.value && stepTimer.value?.status === 'paused') return `继续第 ${currentStep.value?.stepNo || 1} 步计时`
+  if (stepTimer.value) return `重设当前菜品计时`
   return `配置第 ${currentStep.value?.stepNo || 1} 步计时`
 })
 const timerDialogSub = computed(() => {
-  if (anotherStepTimerActive.value) return '当前全局只有一个步骤计时器，切换后会结束上一段计时。'
+  if (otherRunningTimers.value.length) return `当前另有 ${otherRunningTimers.value.length} 个其他菜品计时正在运行，不会和这道菜冲突。`
   return '把计时设置放进独立弹窗里，步骤阅读和下一步操作不会再互相打断。'
-})
-const timerConflictText = computed(() => {
-  if (!anotherStepTimerActive.value) return ''
-  const context = store.kitchenTimer.context
-  return `${context?.dishName || '另一道菜'} · 第 ${context?.stepNo || 1} 步“${context?.stepTitle || '当前步骤'}”正在计时，新的步骤计时会直接切换过去。`
 })
 
 function goBack() {
@@ -310,13 +323,13 @@ function finish() {
 }
 
 watch(
-  () => [item.value?.currentStep, currentStep.value?.minutes, currentStepTimerActive.value] as const,
+  () => [item.value?.currentStep, currentStep.value?.minutes, stepTimer.value?.id, stepTimer.value?.durationMs, timerMatchesCurrentStep.value] as const,
   (payload) => {
-  if (!payload) return
-  const [, , active] = payload
-  if (active) {
-    customMinutes.value = String(Math.max(1, Math.round(store.kitchenTimer.durationMs / 60000)))
-    return
+    if (!payload) return
+    const [, , , durationMs, active] = payload
+    if (active && durationMs) {
+      customMinutes.value = String(Math.max(1, Math.round(durationMs / 60000)))
+      return
     }
     syncTimerDraftFromStep()
   },
@@ -335,13 +348,6 @@ function closeTimerDialog() {
 async function applyStepTimer() {
   if (!item.value || !currentStep.value) return
   const minutes = timerDraftMinutes.value
-  if (anotherStepTimerActive.value) {
-    try {
-      await confirmSwitchExistingTimer()
-    } catch {
-      return
-    }
-  }
   await primeKitchenTimerAlert()
   uni.hideKeyboard()
   store.startStepKitchenTimer(item.value.id, minutes)
@@ -350,30 +356,33 @@ async function applyStepTimer() {
 }
 
 async function resumeStepTimer() {
+  if (!stepTimer.value) return
   await primeKitchenTimerAlert()
-  store.resumeKitchenTimer()
+  store.resumeKitchenTimer(stepTimer.value.id)
   timerDialogVisible.value = false
   uni.showToast({ title: '继续当前计时', icon: 'none' })
 }
 
 function pauseStepTimer() {
-  store.pauseKitchenTimer()
+  if (!stepTimer.value) return
+  store.pauseKitchenTimer(stepTimer.value.id)
   uni.showToast({ title: '已暂停计时', icon: 'none' })
 }
 
 function resetTimer() {
-  store.resetKitchenTimer()
+  if (!stepTimer.value) return
+  store.resetKitchenTimer(stepTimer.value.id)
   syncTimerDraftFromStep()
   timerDialogVisible.value = false
   uni.showToast({ title: '已结束当前计时', icon: 'none' })
 }
 
 function handleTimerSecondaryAction() {
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'running') {
+  if (stepTimer.value?.status === 'running') {
     pauseStepTimer()
     return
   }
-  if (currentStepTimerActive.value && store.kitchenTimer.status === 'paused') {
+  if (stepTimer.value?.status === 'paused') {
     resumeStepTimer()
     return
   }
@@ -391,26 +400,6 @@ function normalizeCustomMinutesInput() {
 
 function syncTimerDraftFromStep() {
   customMinutes.value = String(defaultStepMinutes())
-}
-
-function confirmSwitchExistingTimer() {
-  return new Promise<void>((resolve, reject) => {
-    uni.showModal({
-      title: '切换步骤计时',
-      content: timerConflictText.value || '当前已有其他步骤在计时，继续后会切换到当前步骤。',
-      confirmText: '继续切换',
-      cancelText: '先不切换',
-      confirmColor: '#ff7b25',
-      success: (result) => {
-        if (result.confirm) {
-          resolve()
-          return
-        }
-        reject(new Error('cancelled'))
-      },
-      fail: () => reject(new Error('cancelled'))
-    })
-  })
 }
 
 function defaultStepMinutes() {
@@ -442,6 +431,11 @@ function formatDuration(durationMs: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${`${minutes}`.padStart(2, '0')}:${`${seconds}`.padStart(2, '0')}`
+}
+
+function goPeerTimer(targetItemId?: string) {
+  if (!targetItemId || targetItemId === item.value?.id) return
+  uni.navigateTo({ url: `/pages/cook-step/index?itemId=${targetItemId}` })
 }
 </script>
 
@@ -588,8 +582,7 @@ function formatDuration(durationMs: number) {
   margin-top: 22rpx;
   padding: 24rpx 22rpx;
   border-radius: 24rpx;
-  background:
-    linear-gradient(180deg, rgba(255, 250, 245, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(255, 250, 245, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
   box-shadow: inset 0 0 0 1rpx rgba(255, 220, 197, 0.9);
 }
 
@@ -662,6 +655,84 @@ function formatDuration(durationMs: number) {
   color: $text-sub;
   font-size: 22rpx;
   line-height: 1.55;
+}
+
+.timer-peer-list {
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed rgba(229, 209, 193, 0.96);
+}
+
+.timer-peer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 14rpx;
+}
+
+.timer-peer-head text:first-child {
+  color: $text-main;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.timer-peer-head text:last-child {
+  color: $text-sub;
+  font-size: 22rpx;
+}
+
+.timer-peer-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14rpx;
+  align-items: center;
+  padding: 18rpx 18rpx 18rpx 20rpx;
+  margin-top: 12rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1rpx rgba(255, 226, 208, 0.92);
+}
+
+.timer-peer-copy,
+.timer-peer-meta {
+  min-width: 0;
+}
+
+.timer-peer-title,
+.timer-peer-sub,
+.timer-peer-meta text {
+  display: block;
+}
+
+.timer-peer-title {
+  color: $text-main;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.timer-peer-sub {
+  margin-top: 6rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.timer-peer-meta {
+  text-align: right;
+}
+
+.timer-peer-meta text:first-child {
+  color: $primary;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.timer-peer-meta text:last-child {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 21rpx;
 }
 
 .timer-dialog-layer {
@@ -747,7 +818,7 @@ function formatDuration(durationMs: number) {
   line-height: 1.55;
 }
 
-.timer-conflict-note {
+.timer-parallel-note {
   position: relative;
   z-index: 1;
   margin-top: 20rpx;
@@ -757,18 +828,18 @@ function formatDuration(durationMs: number) {
   background: rgba(255, 252, 247, 0.94);
 }
 
-.timer-conflict-title,
-.timer-conflict-sub {
+.timer-parallel-title,
+.timer-parallel-sub {
   display: block;
 }
 
-.timer-conflict-title {
+.timer-parallel-title {
   color: $primary;
   font-size: 24rpx;
   font-weight: 900;
 }
 
-.timer-conflict-sub {
+.timer-parallel-sub {
   margin-top: 8rpx;
   color: $text-sub;
   font-size: 22rpx;

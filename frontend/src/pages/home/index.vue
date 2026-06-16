@@ -16,7 +16,7 @@
       <text>搜索菜名 / 食材 / 做法</text>
     </view>
 
-    <TodayMenuSummary :count="store.menuDishCount" :servings="store.menu.servings" :minutes="displayEstimatedMinutes" />
+    <TodayMenuSummary :count="store.menuDishCount" :servings="store.menu.servings" :minutes="store.estimatedMinutes" />
 
     <SectionTitle title="今日推荐">
       <button class="section-extra" hover-class="tap" @tap="shuffle">换一换 ↻</button>
@@ -87,7 +87,6 @@ const recommended = computed(() => {
 })
 
 const recentRecords = computed(() => store.historyRecords.slice(0, 2))
-const displayEstimatedMinutes = computed(() => (store.menuDishCount === 4 && store.menu.servings === 3 ? 75 : store.estimatedMinutes))
 
 function shuffle() {
   if (!store.dishes.length) return

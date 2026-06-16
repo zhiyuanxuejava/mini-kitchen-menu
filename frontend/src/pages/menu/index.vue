@@ -23,7 +23,7 @@
       <view>
         <image :src="icons.clockOrange" mode="aspectFit" />
         <text>预计用时</text>
-        <strong>{{ displayEstimatedMinutes }} 分钟</strong>
+        <strong>{{ store.estimatedMinutes }} 分钟</strong>
       </view>
     </view>
 
@@ -96,7 +96,6 @@ const shortDate = computed(() => {
   const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()]
   return `${week} ${date.getMonth() + 1}.${date.getDate()}`
 })
-const displayEstimatedMinutes = computed(() => (store.menuDishCount === 4 && store.menu.servings === 3 ? 75 : store.estimatedMinutes))
 
 function onNote(id: string, event: Event) {
   const value = (event as unknown as { detail: { value: string } }).detail.value

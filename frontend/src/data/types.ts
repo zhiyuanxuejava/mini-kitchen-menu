@@ -125,13 +125,17 @@ export interface LearnedDishEntry {
 }
 
 export interface KitchenTimer {
+  id: string
+  scopeKey: string
   status: KitchenTimerStatus
   durationMs: number
   remainingMs: number
   endAt?: number
   lastFinishedAt?: number
   alertPending?: boolean
-  context?: {
+  createdAt: number
+  updatedAt: number
+  context: {
     type: KitchenTimerContextType
     itemId?: string
     dishId?: string

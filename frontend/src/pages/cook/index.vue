@@ -12,6 +12,36 @@
 
     <CookStatusCard :pending="store.pendingCount" :cooking="store.cookingCount" :done="store.doneCount" />
 
+    <view v-if="store.activeKitchenTimers.length" class="timer-board card">
+      <view class="timer-board-head">
+        <view>
+          <text class="timer-board-title">当前计时看板</text>
+          <text class="timer-board-sub">刷新后也会保留，支持多道菜同时计时</text>
+        </view>
+        <view class="timer-board-count">
+          <text>{{ store.activeKitchenTimers.length }}</text>
+          <text>个</text>
+        </view>
+      </view>
+
+      <button
+        v-for="timer in store.activeKitchenTimers.slice(0, 4)"
+        :key="timer.id"
+        class="timer-board-item"
+        hover-class="tap"
+        @tap="goTimer(timer.context.itemId)"
+      >
+        <view class="timer-board-copy">
+          <text class="timer-board-item-title">{{ timer.context.dishName || '当前菜品' }}</text>
+          <text class="timer-board-item-sub">第 {{ timer.context.stepNo || 1 }} 步 · {{ timer.context.stepTitle || '当前步骤' }}</text>
+        </view>
+        <view class="timer-board-meta">
+          <text>{{ timer.status === 'paused' ? '已暂停' : formatDuration(store.kitchenTimerRemaining(timer.id)) }}</text>
+          <text>{{ timer.status === 'paused' ? '继续处理' : '去步骤' }}</text>
+        </view>
+      </button>
+    </view>
+
     <view class="cook-list">
       <CookDishCard
         v-for="item in visibleItems"
@@ -54,7 +84,7 @@ const tabs = [
 
 onShow(async () => {
   store.hydrate()
-  store.syncKitchenTimer()
+  store.syncKitchenTimers()
   syncActiveTab()
   if (!store.user) {
     uni.reLaunch({ url: '/pages/login/index' })
@@ -100,6 +130,18 @@ function syncActiveTab() {
   }
   active.value = 'done'
 }
+
+function goTimer(itemId?: string) {
+  if (!itemId) return
+  uni.navigateTo({ url: `/pages/cook-step/index?itemId=${itemId}` })
+}
+
+function formatDuration(durationMs: number) {
+  const totalSeconds = Math.max(0, Math.ceil(durationMs / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${`${minutes}`.padStart(2, '0')}:${`${seconds}`.padStart(2, '0')}`
+}
 </script>
 
 <style scoped lang="scss">
@@ -138,6 +180,111 @@ function syncActiveTab() {
 
 .cook-list {
   margin-top: 30rpx;
+}
+
+.timer-board {
+  margin-top: 22rpx;
+  padding: 24rpx 22rpx 20rpx;
+  background:
+    radial-gradient(circle at 94% 12%, rgba(255, 163, 98, 0.18), transparent 180rpx),
+    linear-gradient(180deg, #fffefb 0%, #fff8f1 100%);
+}
+
+.timer-board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.timer-board-title,
+.timer-board-sub,
+.timer-board-count text,
+.timer-board-item-title,
+.timer-board-item-sub,
+.timer-board-meta text {
+  display: block;
+}
+
+.timer-board-title {
+  color: $text-main;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.timer-board-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.timer-board-count {
+  min-width: 96rpx;
+  padding: 12rpx 0;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  box-shadow: inset 0 0 0 1rpx rgba(255, 220, 197, 0.92);
+}
+
+.timer-board-count text:first-child {
+  color: $primary;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.timer-board-count text:last-child {
+  margin-top: 2rpx;
+  color: $text-sub;
+  font-size: 20rpx;
+}
+
+.timer-board-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16rpx;
+  align-items: center;
+  margin-top: 16rpx;
+  padding: 18rpx 18rpx 18rpx 20rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: inset 0 0 0 1rpx rgba(255, 226, 208, 0.9);
+}
+
+.timer-board-copy,
+.timer-board-meta {
+  min-width: 0;
+}
+
+.timer-board-item-title {
+  color: $text-main;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.timer-board-item-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.timer-board-meta {
+  text-align: right;
+}
+
+.timer-board-meta text:first-child {
+  color: $primary;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.timer-board-meta text:last-child {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 21rpx;
 }
 
 .tipbar {
