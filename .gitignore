@@ -70,3 +70,5 @@ release/
 *.tgz
 *.zip
 *.7z
+
+CLAUDE.md
