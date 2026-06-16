@@ -523,6 +523,11 @@ app.get('/health', (_req, res) => {
 app.post('/auth/register', async (req, res) => {
   const body = emailSchema.parse(req.body)
   const email = normalizeEmail(body.email)
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) {
+    res.status(409).json({ message: '该邮箱已注册', code: 'EMAIL_ALREADY_REGISTERED' })
+    return
+  }
   const passwordHash = await bcrypt.hash(body.password, 10)
   const user = await prisma.user.create({
     data: {
