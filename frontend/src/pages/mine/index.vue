@@ -13,42 +13,52 @@
     </view>
 
     <view class="profile card">
-      <UserAvatar class="avatar" :src="store.user?.avatarUrl || icons.avatar" />
-      <view class="profile-copy">
-        <text class="nickname">{{ displayName }}</text>
-        <text>记录每一次下厨</text>
+      <view class="profile-top">
+        <UserAvatar class="avatar" :src="store.user?.avatarUrl || icons.avatar" />
+        <view class="profile-copy">
+          <text class="nickname">{{ displayName }}</text>
+          <text class="profile-sub">记录每一次下厨</text>
+        </view>
+        <view class="profile-illustration">
+          <image class="profile-pot" :src="icons.pot" mode="aspectFit" />
+        </view>
       </view>
-      <image class="profile-pot" :src="icons.pot" mode="aspectFit" />
+
       <view class="stats">
-      <view>
-        <image :src="icons.cookbook" mode="aspectFit" />
-        <text>我创建的菜品</text>
-        <strong>{{ store.myDishCount }} 道</strong>
-      </view>
-      <view>
-        <image :src="icons.check" mode="aspectFit" />
-        <text>我已学会</text>
-        <strong>{{ store.learnedDishCount }} 道</strong>
-      </view>
-      <view>
-        <image :src="icons.heart" mode="aspectFit" />
-        <text>我的收藏</text>
-        <strong>{{ store.favoriteDishCount }} 道</strong>
+        <view class="stat-item">
+          <image :src="icons.cookbook" mode="aspectFit" />
+          <text>我创建的菜品</text>
+          <strong>{{ store.myDishCount }} 道</strong>
+        </view>
+        <view class="stat-item">
+          <image :src="icons.check" mode="aspectFit" />
+          <text>我已学会</text>
+          <strong>{{ store.learnedDishCount }} 道</strong>
+        </view>
+        <view class="stat-item">
+          <image :src="icons.heart" mode="aspectFit" />
+          <text>我的收藏</text>
+          <strong>{{ store.favoriteDishCount }} 道</strong>
         </view>
       </view>
     </view>
 
     <view class="quick-grid">
       <button v-for="entry in quickEntries" :key="entry.title" class="quick-card" hover-class="tap" @tap="entry.tap">
-        <image :src="entry.icon" mode="aspectFit" />
-        <text>{{ entry.title }}</text>
-        <small>{{ entry.sub }}</small>
+        <view class="quick-icon-wrap">
+          <image :src="entry.icon" mode="aspectFit" />
+        </view>
+        <view class="quick-copy">
+          <text>{{ entry.title }}</text>
+          <small>{{ entry.sub }}</small>
+        </view>
       </button>
     </view>
 
-    <SectionTitle title="最近成品">
-      <button class="section-extra" hover-class="tap" @tap="goRecords">查看全部 ›</button>
-    </SectionTitle>
+    <view class="recent-head">
+      <SectionTitle title="最近成品" />
+      <button class="section-extra recent-more" hover-class="tap" @tap="goRecords">查看全部 ›</button>
+    </view>
     <view v-if="recentRecords.length" class="recent-grid">
       <view v-for="record in recentRecords" :key="record.id" class="recent card" @tap="viewDish(record.dish.id)">
         <image :src="record.photos[0] || record.dish.coverImage" mode="aspectFill" />
@@ -176,11 +186,17 @@ function openSettings() {
 .profile {
   position: relative;
   overflow: hidden;
+  padding: 28rpx 28rpx 0;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255, 158, 82, 0.14), transparent 180rpx),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 251, 246, 0.98) 100%);
+}
+
+.profile-top {
   display: grid;
-  grid-template-columns: 126rpx minmax(0, 1fr) 126rpx;
-  gap: 16rpx;
+  grid-template-columns: 118rpx minmax(0, 1fr) 118rpx;
+  gap: 18rpx;
   align-items: center;
-  padding: 30rpx 28rpx 0;
 }
 
 .avatar {
@@ -198,55 +214,68 @@ function openSettings() {
   color: $text-main;
   font-size: 36rpx;
   font-weight: 900;
+  line-height: 1.1;
 }
 
-.profile-copy text:last-child {
+.profile-sub {
   display: block;
-  margin-top: 12rpx;
+  margin-top: 10rpx;
   color: $text-sub;
-  font-size: 27rpx;
+  font-size: 25rpx;
+}
+
+.profile-illustration {
+  height: 118rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .profile-pot {
-  width: 126rpx;
-  height: 108rpx;
+  width: 104rpx;
+  height: 92rpx;
+  opacity: 0.92;
 }
 
 .stats {
   grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-around;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 24rpx;
-  padding: 24rpx 0 30rpx;
+  padding: 22rpx 0 28rpx;
+  border-top: 1rpx solid rgba(236, 225, 215, 0.92);
 }
 
-.stats > view {
-  flex: 1;
-  display: flex;
+.stat-item {
+  min-height: 144rpx;
+  display: grid;
+  align-content: center;
+  justify-items: center;
   flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
+  gap: 10rpx;
   padding: 0 12rpx;
+  text-align: center;
 }
 
-.stats > view:not(:last-child) {
+.stat-item:not(:last-child) {
   border-right: 1rpx solid $border;
 }
 
 .stats image {
-  width: 48rpx;
-  height: 48rpx;
+  width: 42rpx;
+  height: 42rpx;
 }
 
 .stats text {
   color: $text-sub;
-  font-size: 23rpx;
+  font-size: 22rpx;
+  line-height: 1.35;
 }
 
 .stats strong {
   color: $text-main;
-  font-size: 31rpx;
+  font-size: 32rpx;
+  line-height: 1.1;
 }
 
 .quick-grid,
@@ -257,53 +286,108 @@ function openSettings() {
 
 .quick-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 34rpx;
+  grid-auto-rows: 216rpx;
+  margin-top: 30rpx;
+  align-items: stretch;
 }
 
 .recent-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.quick-card {
-  min-height: 166rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.quick-card,
+.quick-grid .quick-card,
+.quick-grid uni-button.quick-card {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 216rpx;
+  display: grid;
+  grid-template-rows: 62rpx minmax(0, 1fr);
+  align-content: stretch;
+  justify-items: stretch;
+  margin: 0;
+  padding: 22rpx 20rpx 20rpx;
+  box-sizing: border-box;
   border: 1rpx solid $border;
   border-radius: 26rpx;
   background: linear-gradient(145deg, #fff, #fff8ef);
   box-shadow: $shadow-soft;
+  text-align: left;
+}
+
+.quick-card::after,
+.quick-grid .quick-card::after {
+  border: 0;
+}
+
+.quick-icon-wrap {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
 .quick-card image {
-  width: 66rpx;
-  height: 66rpx;
+  width: 62rpx;
+  height: 62rpx;
+  flex: 0 0 auto;
+}
+
+.quick-copy {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 54rpx 60rpx;
+  align-content: end;
 }
 
 .quick-card text {
-  display: block;
+  min-width: 0;
+  height: 54rpx;
+  display: flex;
+  align-items: center;
   max-width: 100%;
-  margin-top: 10rpx;
   color: $text-main;
-  font-size: 24rpx;
+  font-size: 25rpx;
   font-weight: 900;
   overflow: hidden;
-  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .quick-card small {
-  display: block;
-  max-width: 100%;
-  margin-top: 8rpx;
+  width: 100%;
+  min-height: 60rpx;
+  margin-top: 0;
   color: $text-sub;
-  font-size: 20rpx;
+  font-size: 21rpx;
   overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.recent-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.recent-head :deep(.section-title) {
+  margin: 36rpx 0 18rpx;
+}
+
+.recent-more {
+  min-width: 188rpx;
+  height: 68rpx;
+  margin-bottom: 6rpx;
+  border-radius: 20rpx;
+  font-size: 26rpx;
 }
 
 .recent {
@@ -351,7 +435,8 @@ function openSettings() {
   grid-template-columns: 72rpx minmax(0, 1fr) 24rpx;
   gap: 18rpx;
   align-items: center;
-  padding: 26rpx;
+  min-height: 142rpx;
+  padding: 26rpx 24rpx;
 }
 
 .recent-empty image {
