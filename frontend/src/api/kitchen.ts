@@ -187,6 +187,17 @@ type BackendFavoriteDishEntry = {
   dish: BackendDish
 }
 
+export class ApiError extends Error {
+  status: number
+  code?: string
+  constructor(status: number, message: string, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
 function request<T>(url: string, options: RequestOptions = {}) {
   return new Promise<T>((resolve, reject) => {
     const base = requireApiBase()
@@ -204,10 +215,12 @@ function request<T>(url: string, options: RequestOptions = {}) {
           resolve(response.data as T)
           return
         }
-        const body = response.data as { message?: string } | string
-        reject(new Error(typeof body === 'object' && body?.message ? body.message : `请求失败 ${status}`))
+        const body = response.data as { message?: string; code?: string } | string
+        const message = typeof body === 'object' && body?.message ? body.message : `请求失败 ${status}`
+        const code = typeof body === 'object' ? body?.code : undefined
+        reject(new ApiError(status, message, code))
       },
-      fail: (error) => reject(new Error(error.errMsg || '网络请求失败'))
+      fail: (error) => reject(new ApiError(0, error.errMsg || '网络请求失败'))
     })
   })
 }
