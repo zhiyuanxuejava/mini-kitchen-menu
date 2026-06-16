@@ -132,7 +132,15 @@ curl http://101.44.160.63:8951/api/uploads/<your-file-name>
 
 ## 后续代码更新如何重新发布
 
-推荐沿用当前的一键部署方式，每次更新都按“重新打包 -> 上传服务器 -> 解压替换 -> 再执行部署脚本”处理。
+推荐沿用当前的“重新打包 -> 上传服务器 -> 执行更新脚本”方式。  
+更新脚本会自动完成：
+
+- 备份当前数据库
+- 备份当前上传文件
+- 解压新压缩包
+- 删除旧目录并替换成新目录
+- 恢复数据库和上传文件
+- 执行 `deploy/linux/deploy-ip.sh`
 
 ### 1. 本地重新生成发布包
 
@@ -153,20 +161,26 @@ release/mini-kitchen-menu-linux-upload-20260615-160600.tar.gz
 
 可以继续上传到服务器上的 `/h5/` 目录。
 
-### 3. 先备份线上数据
+### 3. 把更新脚本放到服务器 `/h5/`
 
-因为发布包默认不包含线上数据库和用户上传文件，所以替换目录前，先备份：
+把下面这个脚本上传到服务器 `/h5/`：
 
-```bash
-cp /h5/mini-kitchen-menu/backend/prisma/dev.db /h5/dev.db.bak
-cp -r /h5/mini-kitchen-menu/backend/uploads /h5/uploads.bak
+```text
+deploy/linux/upgrade-upload-bundle.sh
 ```
 
-如果当前还是首次发布前的空数据，也可以跳过这一步。
+建议服务器上放成：
 
-### 4. 解压并替换代码目录
+```bash
+cp deploy/linux/upgrade-upload-bundle.sh /h5/upgrade-upload-bundle.sh
+chmod +x /h5/upgrade-upload-bundle.sh
+```
 
-下面示例假设你上传的新包名为：
+后续每次更新都可以重复使用这个脚本，不需要重新改内容。
+
+### 4. 在服务器执行更新脚本
+
+假设你上传的新包名为：
 
 ```text
 /h5/mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
@@ -176,41 +190,19 @@ cp -r /h5/mini-kitchen-menu/backend/uploads /h5/uploads.bak
 
 ```bash
 cd /h5
-tar -xzf mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
-rm -rf /h5/mini-kitchen-menu
-mv /h5/mini-kitchen-menu-linux-upload /h5/mini-kitchen-menu
+bash ./upgrade-upload-bundle.sh /h5/mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
 ```
 
-### 5. 恢复数据库和上传文件
+这个脚本会自动完成：
 
-如果你在第 3 步做了备份，需要把数据拷回新目录：
+- 备份 `/h5/mini-kitchen-menu/backend/prisma/dev.db` 到 `/h5/dev.db.bak`
+- 备份 `/h5/mini-kitchen-menu/backend/uploads` 到 `/h5/uploads.bak`
+- 解压压缩包
+- 替换 `/h5/mini-kitchen-menu`
+- 恢复数据库和上传文件
+- 进入新目录执行 `bash ./deploy/linux/deploy-ip.sh`
 
-```bash
-cp /h5/dev.db.bak /h5/mini-kitchen-menu/backend/prisma/dev.db
-cp -r /h5/uploads.bak/* /h5/mini-kitchen-menu/backend/uploads/
-```
-
-如果 `uploads.bak` 目录为空，第二条命令报空时可忽略。
-
-### 6. 重新执行部署脚本
-
-进入新目录后执行：
-
-```bash
-cd /h5/mini-kitchen-menu
-bash ./deploy/linux/deploy-ip.sh
-```
-
-脚本会自动完成：
-
-- 安装依赖
-- 重新生成 Prisma Client
-- 重新构建 H5 和后端
-- 重启后端服务
-- 重载 `nginx`
-- 自动验证 H5、接口、静态资源、上传访问链路
-
-### 7. 更新后验证
+### 5. 更新后验证
 
 更新完成后建议至少执行：
 
@@ -225,7 +217,34 @@ systemctl status mini-kitchen-menu-backend.service --no-pager
 http://101.44.160.63:8951/
 ```
 
-### 8. 适用范围说明
+### 6. 脚本使用说明
+
+默认脚本按下面路径执行：
+
+- 基础目录：`/h5`
+- 应用目录：`/h5/mini-kitchen-menu`
+- 解压后的临时目录：`/h5/mini-kitchen-menu-linux-upload`
+
+标准用法：
+
+```bash
+bash /h5/upgrade-upload-bundle.sh /h5/mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
+```
+
+如果以后你的目录名改了，也可以这样传：
+
+```bash
+BASE_DIR=/h5 APP_NAME=mini-kitchen-menu bash /h5/upgrade-upload-bundle.sh /h5/mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
+```
+
+注意：
+
+- 压缩包必须是 `.tar.gz`
+- 压缩包内顶层目录必须是 `mini-kitchen-menu-linux-upload`
+- 如果当前还没有旧项目目录，脚本会跳过备份，直接解压部署
+- 如果 `uploads.bak` 为空，脚本会自动跳过上传文件恢复
+
+### 7. 适用范围说明
 
 以上流程适用于：
 
