@@ -37,33 +37,46 @@
       </picker>
     </view>
 
-    <view v-if="filteredEntries.length" class="favorite-list">
-      <view v-for="entry in filteredEntries" :key="entry.id + entry.dish.id" class="favorite-card card">
-        <image class="favorite-cover" :src="entry.dish.coverImage" mode="aspectFill" @tap="viewDish(entry.dish.id)" />
-        <view class="favorite-copy" @tap="viewDish(entry.dish.id)">
-          <view class="favorite-head">
-            <text class="favorite-name line-clamp-1">{{ entry.dish.name }} {{ entry.dish.emoji }}</text>
-            <text class="favorite-badge">已收藏</text>
+    <view v-if="monthlyGroups.length" class="timeline">
+      <TimelineGroup
+        v-for="(group, index) in monthlyGroups"
+        :key="group.monthKey"
+        :month-label="group.monthLabel"
+        :is-first="index === 0"
+        :is-last="index === monthlyGroups.length - 1"
+      >
+        <view v-for="entry in group.items" :key="entry.id + entry.dish.id" class="timeline-row">
+          <view class="timeline-day">
+            <view class="timeline-day-dot" />
+            <text class="timeline-day-label">{{ entry.dayLabel }}</text>
           </view>
-          <text class="favorite-desc line-clamp-2">{{ entry.dish.description || '暂无描述' }}</text>
-          <text class="favorite-time">收藏时间：{{ favoriteTimeLabel(entry.favoritedAt) }}</text>
-          <view class="favorite-meta">
-            <text>{{ entry.dish.difficulty }}</text>
-            <text>{{ entry.dish.estimatedMinutes }} 分钟</text>
-            <text>{{ entry.dish.learnedAt ? '我已学会' : '待尝试' }}</text>
+          <view class="timeline-card favorite-card card">
+            <image class="favorite-cover" :src="entry.dish.coverImage" mode="aspectFill" @tap="viewDish(entry.dish.id)" />
+            <view class="favorite-copy" @tap="viewDish(entry.dish.id)">
+              <view class="favorite-head">
+                <text class="favorite-name line-clamp-1">{{ entry.dish.name }} {{ entry.dish.emoji }}</text>
+                <text class="favorite-badge">已收藏</text>
+              </view>
+              <text class="favorite-desc line-clamp-2">{{ entry.dish.description || '暂无描述' }}</text>
+              <view class="favorite-meta">
+                <text>{{ entry.dish.difficulty }}</text>
+                <text>{{ entry.dish.estimatedMinutes }} 分钟</text>
+                <text>{{ entry.dish.learnedAt ? '我已学会' : '待尝试' }}</text>
+              </view>
+            </view>
+            <view class="favorite-actions">
+              <button class="ghost-btn action-btn" hover-class="tap" @tap="store.addToMenu(entry.dish.id)">加入点菜单</button>
+              <button class="ghost-btn action-btn delete-btn" hover-class="tap" @tap="toggleFavorite(entry.dish.id)">取消收藏</button>
+            </view>
           </view>
         </view>
-        <view class="favorite-actions">
-          <button class="ghost-btn action-btn" hover-class="tap" @tap="store.addToMenu(entry.dish.id)">加入点菜单</button>
-          <button class="ghost-btn action-btn delete-btn" hover-class="tap" @tap="toggleFavorite(entry.dish.id)">取消收藏</button>
-        </view>
-      </view>
+      </TimelineGroup>
     </view>
 
     <EmptyState
       v-else
-      title="还没有收藏菜品"
-      desc="在菜品库、首页推荐或菜品详情里点一下收藏，就会集中展示到这里。"
+      title="时间线还是空的"
+      desc="在菜品库、首页推荐或菜品详情里点一下收藏，会按时间沉淀到这里。"
     />
   </AppPage>
 </template>
@@ -77,7 +90,9 @@ import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/labels'
 import type { Difficulty, DishCategory } from '@/data/types'
+import TimelineGroup from '@/components/TimelineGroup.vue'
 import { useKitchenStore } from '@/stores/kitchen'
+import { groupByMonth } from '@/utils/timeline'
 
 type DifficultyFilter = Difficulty | 'all'
 
@@ -130,22 +145,14 @@ const filteredEntries = computed(() => {
   })
 })
 
+const monthlyGroups = computed(() => groupByMonth(filteredEntries.value, (entry) => entry.favoritedAt))
+
 function onCategoryChange(event: { detail: { value: string | number } }) {
   activeCategory.value = categories[Number(event.detail.value)]?.key || 'all'
 }
 
 function onDifficultyChange(event: { detail: { value: string | number } }) {
   activeDifficulty.value = difficulties[Number(event.detail.value)] || 'all'
-}
-
-function favoriteTimeLabel(value?: string) {
-  if (!value) return '刚刚'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const y = date.getFullYear()
-  const m = `${date.getMonth() + 1}`.padStart(2, '0')
-  const d = `${date.getDate()}`.padStart(2, '0')
-  return `${y}-${m}-${d}`
 }
 
 function viewDish(id: string) {
@@ -366,5 +373,42 @@ async function toggleFavorite(id: string) {
   border-color: rgba(211, 75, 47, 0.28);
   color: #d34b2f;
   background: #fffaf8;
+}
+
+.timeline {
+  display: block;
+  padding-bottom: 18rpx;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: 80rpx 1fr;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.timeline-row:not(:last-child) {
+  margin-bottom: 20rpx;
+}
+
+.timeline-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding-top: 14rpx;
+}
+
+.timeline-day-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: $primary;
+  box-shadow: 0 0 0 3rpx #fff;
+}
+
+.timeline-day-label {
+  color: $text-sub;
+  font-size: 24rpx;
 }
 </style>
