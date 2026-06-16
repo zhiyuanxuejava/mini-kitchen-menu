@@ -153,11 +153,18 @@ set VITE_API_BASE=http://192.168.3.36:3001
 ## 登录方式与测试账号
 
 - 邮箱登录接口：`POST /auth/login/email`
-- 后端对邮箱登录采用“首次登录自动建号”逻辑；如果邮箱不存在，会用本次输入的密码直接创建用户
-- 小程序登录页默认预填账号：`demo@kitchen.local`
-- 小程序登录页默认预填密码：`123456`
+- 邮箱注册接口：`POST /auth/register`
+- 登录接口区分 `EMAIL_NOT_REGISTERED`（404）和 `PASSWORD_WRONG`（401）两种错误，未注册的邮箱不会再自动建号
+- 小程序登录页和注册页都不再默认预填账号
 
-本地联调可直接使用：
+本地联调建议步骤：
+
+1. 启动后端
+2. 打开小程序登录页，点 "还没账号？去注册"
+3. 用 `demo@kitchen.local / 123456` 完成注册（密码需要二次确认）
+4. 注册成功会自动登录并跳到首页
+
+后续可在登录页直接用：
 
 ```text
 demo@kitchen.local / 123456
@@ -177,7 +184,7 @@ ADMIN_EMAILS="admin@kitchen.local"
 admin@kitchen.local / 123456
 ```
 
-首次用该邮箱登录时，后端会自动创建该用户，并按 `ADMIN_EMAILS` 配置赋予 `admin` 角色。
+首次使用该邮箱时，先在注册页用 `admin@kitchen.local / 123456` 完成注册。后端检测到该邮箱在 `ADMIN_EMAILS` 中，会直接赋予 `admin` 角色，登录后即可访问 `/admin/overview`。
 
 ## 验证步骤
 
