@@ -214,28 +214,29 @@ function openSettings() {
 
 .stats {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
   margin-top: 24rpx;
   padding: 24rpx 0 30rpx;
 }
 
-.stats view {
-  display: grid;
-  grid-template-columns: 54rpx 1fr;
-  column-gap: 12rpx;
+.stats > view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 8rpx;
+  padding: 0 12rpx;
+}
+
+.stats > view:not(:last-child) {
   border-right: 1rpx solid $border;
 }
 
-.stats view:last-child {
-  border-right: 0;
-}
-
 .stats image {
-  grid-row: 1 / 3;
-  width: 52rpx;
-  height: 52rpx;
+  width: 48rpx;
+  height: 48rpx;
 }
 
 .stats text {
@@ -255,7 +256,7 @@ function openSettings() {
 }
 
 .quick-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 34rpx;
 }
 
