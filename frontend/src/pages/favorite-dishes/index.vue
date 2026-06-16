@@ -89,7 +89,7 @@ import AppPage from '@/components/AppPage.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/labels'
-import type { Difficulty, DishCategory } from '@/data/types'
+import type { Difficulty, DishCategory, FavoriteDishEntry } from '@/data/types'
 import TimelineGroup from '@/components/TimelineGroup.vue'
 import { useKitchenStore } from '@/stores/kitchen'
 import { groupByMonth } from '@/utils/timeline'
@@ -100,6 +100,7 @@ const store = useKitchenStore()
 const keyword = ref('')
 const activeCategory = ref<DishCategory | 'all'>('all')
 const activeDifficulty = ref<DifficultyFilter>('all')
+const remoteEntries = ref<FavoriteDishEntry[]>([])
 
 const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).map((key) => ({
   key,
@@ -109,16 +110,21 @@ const categoryNames = categories.map((item) => item.label)
 const difficulties: DifficultyFilter[] = ['all', '简单', '中等', '较难']
 const difficultyNames = ['全部难度', '简单', '中等', '较难']
 
+async function loadEntries() {
+  const result = await store.fetchFavoriteDishEntries()
+  remoteEntries.value = result
+}
+
 onShow(async () => {
   store.hydrate()
   if (!store.user) {
     uni.reLaunch({ url: '/pages/login/index' })
     return
   }
-  await store.fetchFavoriteDishEntries()
+  await loadEntries()
 })
 
-const entries = computed(() => store.favoriteDishEntries())
+const entries = computed(() => (store.token ? remoteEntries.value : store.favoriteDishEntries()))
 const favoriteCount = computed(() => store.favoriteDishCount)
 const activeCategoryIndex = computed(() => Math.max(0, categories.findIndex((item) => item.key === activeCategory.value)))
 const activeCategoryLabel = computed(() => categoryLabels[activeCategory.value])
@@ -162,6 +168,7 @@ function viewDish(id: string) {
 async function toggleFavorite(id: string) {
   try {
     const favorite = await store.toggleDishFavorite(id)
+    if (store.token) await loadEntries()
     uni.showToast({ title: favorite ? '已加入收藏' : '已取消收藏', icon: 'none' })
   } catch {
     uni.showToast({ title: store.apiError || '收藏状态更新失败', icon: 'none' })
