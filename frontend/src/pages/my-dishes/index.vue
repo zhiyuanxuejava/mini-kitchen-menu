@@ -29,33 +29,47 @@
       <button class="primary-btn add-btn" hover-class="tap" @tap="createDish">＋ 新增菜品</button>
     </view>
 
-    <view v-if="filteredDishes.length" class="dish-list">
-      <view v-for="dish in filteredDishes" :key="dish.id" class="dish-card card">
-        <image class="dish-cover" :src="dish.coverImage" mode="aspectFill" @tap="viewDish(dish.id)" />
-        <view class="dish-copy" @tap="viewDish(dish.id)">
-          <view class="dish-head">
-            <text class="dish-name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
-            <text class="dish-badge">我的菜品</text>
+    <view v-if="monthlyGroups.length" class="timeline">
+      <TimelineGroup
+        v-for="(group, index) in monthlyGroups"
+        :key="group.monthKey"
+        :month-label="group.monthLabel"
+        :is-first="index === 0"
+        :is-last="index === monthlyGroups.length - 1"
+      >
+        <view v-for="dish in group.items" :key="dish.id" class="timeline-row">
+          <view class="timeline-day">
+            <view class="timeline-day-dot" />
+            <text class="timeline-day-label">{{ dish.dayLabel }}</text>
           </view>
-          <text class="dish-desc line-clamp-2">{{ dish.description || '暂无描述' }}</text>
-          <text v-if="dish.remark" class="dish-remark line-clamp-2">备注：{{ dish.remark }}</text>
-          <view class="dish-meta">
-            <text>{{ dish.difficulty }}</text>
-            <text>{{ dish.estimatedMinutes }} 分钟</text>
-            <text>{{ dish.servings }} 人份</text>
+          <view class="timeline-card dish-card card">
+            <image class="dish-cover" :src="dish.coverImage" mode="aspectFill" @tap="viewDish(dish.id)" />
+            <view class="dish-copy" @tap="viewDish(dish.id)">
+              <view class="dish-head">
+                <text class="dish-name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
+                <text class="dish-badge">我的菜品</text>
+              </view>
+              <text class="dish-desc line-clamp-2">{{ dish.description || '暂无描述' }}</text>
+              <text v-if="dish.remark" class="dish-remark line-clamp-2">备注：{{ dish.remark }}</text>
+              <view class="dish-meta">
+                <text>{{ dish.difficulty }}</text>
+                <text>{{ dish.estimatedMinutes }} 分钟</text>
+                <text>{{ dish.servings }} 人份</text>
+              </view>
+            </view>
+            <view class="dish-actions">
+              <button class="ghost-btn action-btn" hover-class="tap" @tap="editDish(dish.id)">编辑</button>
+              <button class="ghost-btn action-btn delete-btn" hover-class="tap" @tap="removeDish(dish.id)">删除</button>
+            </view>
           </view>
         </view>
-        <view class="dish-actions">
-          <button class="ghost-btn action-btn" hover-class="tap" @tap="editDish(dish.id)">编辑</button>
-          <button class="ghost-btn action-btn delete-btn" hover-class="tap" @tap="removeDish(dish.id)">删除</button>
-        </view>
-      </view>
+      </TimelineGroup>
     </view>
 
     <EmptyState
       v-else
-      title="还没有自己创建的菜品"
-      desc="新增一道自己的拿手菜后，就可以在这里继续编辑、补备注和删除。"
+      title="时间线还是空的"
+      desc="新增一道自己的拿手菜后，会按时间出现在这里，可以继续编辑、补备注。"
     />
   </AppPage>
 </template>
@@ -67,7 +81,9 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
+import TimelineGroup from '@/components/TimelineGroup.vue'
 import { useKitchenStore } from '@/stores/kitchen'
+import { groupByMonth } from '@/utils/timeline'
 
 const store = useKitchenStore()
 const keyword = ref('')
@@ -81,7 +97,12 @@ onShow(async () => {
   await store.ensureRemoteDishes()
 })
 
-const myDishes = computed(() => store.myCreatedDishes())
+const myDishes = computed(() =>
+  store
+    .myCreatedDishes()
+    .slice()
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+)
 const filteredDishes = computed(() => {
   const search = keyword.value.trim().toLowerCase()
   if (!search) return myDishes.value
@@ -92,6 +113,8 @@ const filteredDishes = computed(() => {
       .includes(search)
   )
 })
+
+const monthlyGroups = computed(() => groupByMonth(filteredDishes.value, (dish) => dish.createdAt))
 
 function createDish() {
   uni.navigateTo({ url: '/pages/dish-form/index' })
@@ -342,5 +365,42 @@ function removeDish(id: string) {
   border-color: rgba(211, 75, 47, 0.28);
   color: #d34b2f;
   background: #fffaf8;
+}
+
+.timeline {
+  display: block;
+  padding-bottom: 18rpx;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: 80rpx 1fr;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.timeline-row:not(:last-child) {
+  margin-bottom: 20rpx;
+}
+
+.timeline-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding-top: 14rpx;
+}
+
+.timeline-day-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: $primary;
+  box-shadow: 0 0 0 3rpx #fff;
+}
+
+.timeline-day-label {
+  color: $text-sub;
+  font-size: 24rpx;
 }
 </style>
