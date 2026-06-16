@@ -3,7 +3,9 @@
     <view class="photo-wrap" @tap="$emit('view', dish.id)">
       <image class="photo" :src="dish.coverImage" mode="aspectFill" />
       <view class="tag">{{ dish.emoji }} {{ dish.name }}</view>
-      <text class="heart">{{ dish.isFavorite ? '♥' : '♡' }}</text>
+      <button class="heart-btn" hover-class="tap" @tap.stop="$emit('favorite', dish.id)">
+        <text class="heart" :class="{ active: dish.isFavorite }">{{ dish.isFavorite ? '♥' : '♡' }}</text>
+      </button>
     </view>
     <view class="card-body">
       <view class="meta-row">
@@ -37,6 +39,7 @@ defineProps<{
 defineEmits<{
   view: [id: string]
   add: [id: string]
+  favorite: [id: string]
 }>()
 </script>
 
@@ -72,13 +75,28 @@ defineEmits<{
 }
 
 .heart {
-  position: absolute;
-  right: 18rpx;
-  top: 12rpx;
   color: #fff;
   font-size: 54rpx;
   line-height: 1;
   text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.22);
+}
+
+.heart.active {
+  color: #ff8f5a;
+}
+
+.heart-btn {
+  position: absolute;
+  right: 14rpx;
+  top: 12rpx;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(32, 18, 12, 0.24);
 }
 
 .card-body {

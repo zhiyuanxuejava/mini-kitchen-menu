@@ -28,6 +28,7 @@
         :dish="dish"
         @view="viewDish"
         @add="store.addToMenu"
+        @favorite="toggleFavorite"
       />
     </view>
 
@@ -103,6 +104,15 @@ function goDishes() {
 
 function goRecords() {
   uni.navigateTo({ url: '/pages/records/index' })
+}
+
+async function toggleFavorite(id: string) {
+  try {
+    const favorite = await store.toggleDishFavorite(id)
+    uni.showToast({ title: favorite ? '已加入收藏' : '已取消收藏', icon: 'none' })
+  } catch {
+    uni.showToast({ title: store.apiError || '收藏状态更新失败', icon: 'none' })
+  }
 }
 </script>
 

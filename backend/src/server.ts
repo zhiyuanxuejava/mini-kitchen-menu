@@ -148,6 +148,10 @@ type DishWithLearnRelation = Prisma.DishGetPayload<{
       where: { userId: string }
       select: { learnedAt: true }
     }
+    favoritedBy: {
+      where: { userId: string }
+      select: { favoritedAt: true }
+    }
   }
 }>
 
@@ -291,7 +295,8 @@ async function findVisibleDish(id: string, userId: string) {
       categoryRef: true,
       ingredients: { orderBy: { sortOrder: 'asc' } },
       steps: { orderBy: { stepNo: 'asc' } },
-      learnedBy: { where: { userId }, select: { learnedAt: true } }
+      learnedBy: { where: { userId }, select: { learnedAt: true } },
+      favoritedBy: { where: { userId }, select: { favoritedAt: true } }
     }
   })
 }
@@ -323,10 +328,13 @@ async function todayMenu(userId: string) {
 
 function serializeDishWithLearnedAt(dish: DishWithLearnRelation) {
   const learn = dish.learnedBy[0]
+  const favorite = dish.favoritedBy[0]
   return {
     ...dish,
     learnedAt: learn?.learnedAt?.toISOString() || null,
-    learnedBy: undefined
+    isFavorite: Boolean(favorite),
+    learnedBy: undefined,
+    favoritedBy: undefined
   }
 }
 
@@ -338,6 +346,18 @@ function serializeLearnedDishEntry(entry: {
   return {
     id: entry.id,
     learnedAt: entry.learnedAt.toISOString(),
+    dish: serializeDishWithLearnedAt(entry.dish)
+  }
+}
+
+function serializeFavoriteDishEntry(entry: {
+  id: string
+  favoritedAt: Date
+  dish: DishWithLearnRelation
+}) {
+  return {
+    id: entry.id,
+    favoritedAt: entry.favoritedAt.toISOString(),
     dish: serializeDishWithLearnedAt(entry.dish)
   }
 }
@@ -641,7 +661,8 @@ app.get('/dishes', auth, async (req: AuthedRequest, res) => {
       categoryRef: true,
       ingredients: { orderBy: { sortOrder: 'asc' } },
       steps: { orderBy: { stepNo: 'asc' } },
-      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+      favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
     }
   })
   res.json(dishes.map(serializeDishWithLearnedAt))
@@ -694,7 +715,8 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
       categoryRef: true,
       ingredients: { orderBy: { sortOrder: 'asc' } },
       steps: { orderBy: { stepNo: 'asc' } },
-      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+      favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
     }
   })
   res.status(201).json(serializeDishWithLearnedAt(dish))
@@ -774,7 +796,8 @@ app.put('/dishes/:id', auth, async (req: AuthedRequest, res) => {
       categoryRef: true,
       ingredients: { orderBy: { sortOrder: 'asc' } },
       steps: { orderBy: { stepNo: 'asc' } },
-      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+      favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
     }
   })
   res.json(serializeDishWithLearnedAt(dish))
@@ -991,13 +1014,53 @@ app.get('/me/learned-dishes', auth, async (req: AuthedRequest, res) => {
           categoryRef: true,
           ingredients: { orderBy: { sortOrder: 'asc' } },
           steps: { orderBy: { stepNo: 'asc' } },
-          learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } }
+          learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+          favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
         }
       }
     }
   })
 
   res.json(learned.map(serializeLearnedDishEntry))
+})
+
+app.get('/me/favorite-dishes', auth, async (req: AuthedRequest, res) => {
+  const q = param(req.query.q).trim()
+  const category = param(req.query.category)
+  const difficulty = param(req.query.difficulty)
+
+  const favorites = await prisma.favoriteDish.findMany({
+    where: {
+      userId: req.user!.id,
+      dish: {
+        ...(category ? { category } : {}),
+        ...(difficulty ? { difficulty } : {}),
+        ...(q
+          ? {
+              OR: [
+                { name: { contains: q } },
+                { description: { contains: q } },
+                { tasteTags: { contains: q } }
+              ]
+            }
+          : {})
+      }
+    },
+    orderBy: { favoritedAt: 'desc' },
+    include: {
+      dish: {
+        include: {
+          categoryRef: true,
+          ingredients: { orderBy: { sortOrder: 'asc' } },
+          steps: { orderBy: { stepNo: 'asc' } },
+          learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+          favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
+        }
+      }
+    }
+  })
+
+  res.json(favorites.map(serializeFavoriteDishEntry))
 })
 
 app.post('/dishes/:id/learn', auth, async (req: AuthedRequest, res) => {
@@ -1036,6 +1099,40 @@ app.post('/dishes/:id/learn', auth, async (req: AuthedRequest, res) => {
   })
 
   res.json({ learnedAt: learnedDish.learnedAt.toISOString() })
+})
+
+app.post('/dishes/:id/favorite', auth, async (req: AuthedRequest, res) => {
+  const id = param(req.params.id)
+  const dish = await findVisibleDish(id, req.user!.id)
+  if (!dish) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+
+  const body = z
+    .object({
+      favorite: z.boolean().default(true)
+    })
+    .parse(req.body)
+
+  if (!body.favorite) {
+    await prisma.favoriteDish.deleteMany({
+      where: { userId: req.user!.id, dishId: id }
+    })
+    res.json({ isFavorite: false })
+    return
+  }
+
+  await prisma.favoriteDish.upsert({
+    where: { userId_dishId: { userId: req.user!.id, dishId: id } },
+    create: {
+      userId: req.user!.id,
+      dishId: id
+    },
+    update: {}
+  })
+
+  res.json({ isFavorite: true })
 })
 
 app.get('/records/:id', auth, async (req: AuthedRequest, res) => {

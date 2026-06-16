@@ -9,6 +9,7 @@ import type {
   DishCategory,
   DishSourceType,
   EditableDishInput,
+  FavoriteDishEntry,
   KitchenTimer,
   KitchenTimerContextType,
   LearnedDishEntry,
@@ -638,6 +639,9 @@ export const useKitchenStore = defineStore('kitchen', {
       if (state.token) return state.stats.learnedDishCount
       return state.dishes.filter((dish) => Boolean(dish.learnedAt)).length
     },
+    favoriteDishCount(state): number {
+      return state.dishes.filter((dish) => dish.isFavorite).length
+    },
     estimatedMinutes(state): number {
       return state.menu.items.reduce((sum, item) => {
         const dish = state.dishes.find((candidate) => candidate.id === item.dishId)
@@ -1056,6 +1060,15 @@ export const useKitchenStore = defineStore('kitchen', {
     myCreatedDishes() {
       return this.dishes.filter((dish) => this.canEditDish(dish))
     },
+    favoriteDishEntries(): FavoriteDishEntry[] {
+      return this.dishes
+        .filter((dish) => dish.isFavorite)
+        .map((dish) => ({
+          id: `favorite-${dish.id}`,
+          favoritedAt: '',
+          dish
+        }))
+    },
     async setDishLearned(dishId: string, learned: boolean, learnedAt?: string) {
       const dish = this.getDish(dishId)
       if (!dish) throw new Error('菜品不存在')
@@ -1086,6 +1099,37 @@ export const useKitchenStore = defineStore('kitchen', {
         dish.learnedAt = learnedMap.get(dish.id) || undefined
       }
       this.stats.learnedDishCount = learnedMap.size
+      this.persist()
+      return entries
+    },
+    async setDishFavorite(dishId: string, favorite: boolean) {
+      const dish = this.getDish(dishId)
+      if (!dish) throw new Error('菜品不存在')
+
+      if (this.token) {
+        const result = await this.runRemote(() => kitchenApi.updateFavoriteDish(this.token, dishId, favorite))
+        dish.isFavorite = result.isFavorite
+        this.persist()
+        return dish.isFavorite
+      }
+
+      dish.isFavorite = favorite
+      this.persist()
+      return dish.isFavorite
+    },
+    async toggleDishFavorite(dishId: string) {
+      const dish = this.getDish(dishId)
+      if (!dish) throw new Error('菜品不存在')
+      return this.setDishFavorite(dishId, !dish.isFavorite)
+    },
+    async fetchFavoriteDishEntries() {
+      if (!this.token) return this.favoriteDishEntries()
+
+      const entries = await this.runRemote(() => kitchenApi.listFavoriteDishes(this.token))
+      const favoriteSet = new Set(entries.map((entry) => entry.dish.id))
+      for (const dish of this.dishes) {
+        dish.isFavorite = favoriteSet.has(dish.id)
+      }
       this.persist()
       return entries
     },

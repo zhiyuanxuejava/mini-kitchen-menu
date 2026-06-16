@@ -153,6 +153,12 @@ export interface LearnedDishEntry {
   dish: Dish
 }
 
+export interface FavoriteDishEntry {
+  id: string
+  favoritedAt: string
+  dish: Dish
+}
+
 export interface KitchenTimer {
   id: string
   scopeKey: string

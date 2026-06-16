@@ -5,6 +5,7 @@ import type {
   DishCategory,
   DishSourceType,
   EditableDishInput,
+  FavoriteDishEntry,
   IngredientGroupType,
   LearnedDishEntry,
   MeStats,
@@ -177,6 +178,12 @@ type BackendStats = {
 type BackendLearnedDishEntry = {
   id: string
   learnedAt: string
+  dish: BackendDish
+}
+
+type BackendFavoriteDishEntry = {
+  id: string
+  favoritedAt: string
   dish: BackendDish
 }
 
@@ -508,6 +515,14 @@ export const kitchenApi = {
       dish: normalizeDish(row.dish)
     }))
   },
+  async listFavoriteDishes(token: string) {
+    const rows = await request<BackendFavoriteDishEntry[]>('/me/favorite-dishes', { token })
+    return rows.map((row): FavoriteDishEntry => ({
+      id: row.id,
+      favoritedAt: row.favoritedAt,
+      dish: normalizeDish(row.dish)
+    }))
+  },
   async updateLearnedDish(token: string, dishId: string, learned: boolean, learnedAt?: string) {
     return request<{ learnedAt: string | null }>(`/dishes/${dishId}/learn`, {
       method: 'POST',
@@ -516,6 +531,13 @@ export const kitchenApi = {
         learned,
         ...(learnedAt ? { learnedAt } : {})
       }
+    })
+  },
+  async updateFavoriteDish(token: string, dishId: string, favorite: boolean) {
+    return request<{ isFavorite: boolean }>(`/dishes/${dishId}/favorite`, {
+      method: 'POST',
+      token,
+      data: { favorite }
     })
   },
   async listRecords(token: string) {

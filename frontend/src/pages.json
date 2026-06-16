@@ -104,6 +104,12 @@
       }
     },
     {
+      "path": "pages/favorite-dishes/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/login/index",
       "style": {
         "navigationStyle": "custom"

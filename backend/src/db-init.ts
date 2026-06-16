@@ -151,7 +151,18 @@ const statements = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "LearnedDish_userId_dishId_key" ON "LearnedDish"("userId", "dishId")`,
   `CREATE INDEX IF NOT EXISTS "LearnedDish_userId_learnedAt_idx" ON "LearnedDish"("userId", "learnedAt")`,
-  `CREATE INDEX IF NOT EXISTS "LearnedDish_dishId_idx" ON "LearnedDish"("dishId")`
+  `CREATE INDEX IF NOT EXISTS "LearnedDish_dishId_idx" ON "LearnedDish"("dishId")`,
+  `CREATE TABLE IF NOT EXISTS "FavoriteDish" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "dishId" TEXT NOT NULL,
+    "favoritedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FavoriteDish_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "FavoriteDish_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "FavoriteDish_userId_dishId_key" ON "FavoriteDish"("userId", "dishId")`,
+  `CREATE INDEX IF NOT EXISTS "FavoriteDish_userId_favoritedAt_idx" ON "FavoriteDish"("userId", "favoritedAt")`,
+  `CREATE INDEX IF NOT EXISTS "FavoriteDish_dishId_idx" ON "FavoriteDish"("dishId")`
 ]
 
 async function tableInfo(prisma: PrismaClient, table: string) {

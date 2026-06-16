@@ -4,7 +4,9 @@
     <view class="content">
       <view class="row-head">
         <text class="name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
-        <image class="more" :src="icons.more" mode="aspectFit" />
+        <button class="favorite-btn" hover-class="tap" @tap="$emit('favorite', dish.id)">
+          <text :class="['favorite-mark', { active: dish.isFavorite }]">{{ dish.isFavorite ? '♥' : '♡' }}</text>
+        </button>
       </view>
       <view class="meta-row">
         <text>难度：</text>
@@ -41,6 +43,7 @@ defineProps<{
 defineEmits<{
   view: [id: string]
   add: [id: string]
+  favorite: [id: string]
 }>()
 </script>
 
@@ -80,9 +83,27 @@ defineEmits<{
   font-weight: 900;
 }
 
-.more {
-  width: 32rpx;
-  height: 32rpx;
+.favorite-btn {
+  width: 52rpx;
+  min-width: 52rpx;
+  height: 52rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 248, 241, 0.96);
+}
+
+.favorite-mark {
+  color: #cdbbb0;
+  font-size: 34rpx;
+  line-height: 1;
+}
+
+.favorite-mark.active {
+  color: #ff8f5a;
 }
 
 .mini {

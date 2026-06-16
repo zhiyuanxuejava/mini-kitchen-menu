@@ -33,6 +33,9 @@
       <button v-if="canToggleLearned" :class="[dish.learnedAt ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
         {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
       </button>
+      <button :class="[dish.isFavorite ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleFavorite">
+        {{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}
+      </button>
       <button class="primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
       <button v-if="canEdit" class="ghost-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
     </view>
@@ -145,6 +148,16 @@ async function toggleLearned() {
     uni.showToast({ title: learned ? '已加入我学会的菜品' : '已取消学会状态', icon: 'none' })
   } catch {
     uni.showToast({ title: store.apiError || '状态更新失败', icon: 'none' })
+  }
+}
+
+async function toggleFavorite() {
+  if (!dish.value) return
+  try {
+    const favorite = await store.toggleDishFavorite(dish.value.id)
+    uni.showToast({ title: favorite ? '已加入收藏' : '已取消收藏', icon: 'none' })
+  } catch {
+    uni.showToast({ title: store.apiError || '收藏状态更新失败', icon: 'none' })
   }
 }
 
