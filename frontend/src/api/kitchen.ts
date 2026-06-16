@@ -4,6 +4,7 @@ import type {
   Dish,
   DishCategory,
   DishSourceType,
+  EditableDishInput,
   IngredientGroupType,
   LearnedDishEntry,
   MeStats,
@@ -266,6 +267,17 @@ function serializeUserAvatarUrl(value?: string | null) {
   return next
 }
 
+function serializeMediaUrl(value?: string | null) {
+  const next = value?.trim()
+  if (!next) return ''
+  if (!apiBase) return next
+  const uploadBase = `${apiBase}/uploads/`
+  const staticBase = `${apiBase}/static/`
+  if (next.startsWith(uploadBase)) return next.slice(apiBase.length)
+  if (next.startsWith(staticBase)) return next.slice(apiBase.length)
+  return next
+}
+
 function normalizeUser(user: BackendUser): UserProfile {
   return {
     id: user.id,
@@ -425,25 +437,53 @@ export const kitchenApi = {
     const row = await request<BackendDish>(`/dishes/${id}`, { token })
     return normalizeDish(row)
   },
-  async createDish(token: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+  async createDish(token: string, input: EditableDishInput) {
     const row = await request<BackendDish>('/dishes', {
       method: 'POST',
       token,
       data: {
         ...input,
-        coverImage: PLACEHOLDER_IMAGE,
-        tasteTags: ['用户录入'],
-        ingredients: [{ groupType: 'main', name: '待补充食材', amount: '适量' }],
-        steps: [{ title: '补充做法', description: '这道菜由用户录入，详细食材和步骤可在后续完整表单中补充。', heat: '无', minutes: input.estimatedMinutes, tips: '先保存核心信息，之后完善做法。' }]
+        coverImage: serializeMediaUrl(input.coverImage) || PLACEHOLDER_IMAGE,
+        tasteTags: input.tasteTags?.length ? input.tasteTags : ['用户录入'],
+        ingredients: input.ingredients.map((item) => ({
+          groupType: item.groupType,
+          name: item.name,
+          amount: item.amount
+        })),
+        steps: input.steps.map((item) => ({
+          title: item.title,
+          description: item.description,
+          image: serializeMediaUrl(item.image),
+          heat: item.heat,
+          minutes: item.minutes,
+          tips: item.tips
+        }))
       }
     })
     return normalizeDish(row)
   },
-  async updateDish(token: string, id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+  async updateDish(token: string, id: string, input: EditableDishInput) {
     const row = await request<BackendDish>(`/dishes/${id}`, {
       method: 'PUT',
       token,
-      data: input
+      data: {
+        ...input,
+        coverImage: serializeMediaUrl(input.coverImage) || PLACEHOLDER_IMAGE,
+        tasteTags: input.tasteTags?.length ? input.tasteTags : ['用户录入'],
+        ingredients: input.ingredients.map((item) => ({
+          groupType: item.groupType,
+          name: item.name,
+          amount: item.amount
+        })),
+        steps: input.steps.map((item) => ({
+          title: item.title,
+          description: item.description,
+          image: serializeMediaUrl(item.image),
+          heat: item.heat,
+          minutes: item.minutes,
+          tips: item.tips
+        }))
+      }
     })
     return normalizeDish(row)
   },

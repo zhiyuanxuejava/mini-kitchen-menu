@@ -8,6 +8,7 @@ import type {
   Dish,
   DishCategory,
   DishSourceType,
+  EditableDishInput,
   KitchenTimer,
   KitchenTimerContextType,
   LearnedDishEntry,
@@ -405,6 +406,11 @@ function makeId(prefix: string) {
 
 function sourceTypeOf(dish: Dish): DishSourceType {
   return dish.sourceType || 'system_sync'
+}
+
+function collectedTips(steps: EditableDishInput['steps']) {
+  const tips = Array.from(new Set(steps.map((step) => step.tips.trim()).filter(Boolean))).slice(0, 4)
+  return tips.length ? tips : ['出锅前尝味，根据口味微调盐分。']
 }
 
 function sourceLabelOf(dish: Dish) {
@@ -1277,7 +1283,7 @@ export const useKitchenStore = defineStore('kitchen', {
       }
       this.persist()
     },
-    async createDish(input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+    async createDish(input: EditableDishInput) {
       if (this.token) {
         const dish = await this.runRemote(() => kitchenApi.createDish(this.token, input))
         this.dishes.unshift(dish)
@@ -1293,23 +1299,45 @@ export const useKitchenStore = defineStore('kitchen', {
         name: input.name,
         emoji: '🍽️',
         category: input.category,
+        coverImage: input.coverImage || base.coverImage,
+        squareImage: input.coverImage || base.squareImage,
+        detailImage: input.coverImage || base.detailImage,
         description: input.description,
         remark: input.remark,
         difficulty: input.difficulty,
         estimatedMinutes: input.estimatedMinutes,
         servings: input.servings,
+        tasteTags: input.tasteTags?.length ? input.tasteTags : ['用户录入'],
         rating: 0,
         ratingCount: 0,
         isFavorite: false,
         sourceType: 'user_created',
         sourceName: '用户录入',
-        ownerUserId: this.user?.id
+        ownerUserId: this.user?.id,
+        ingredients: input.ingredients.map((item, index) => ({
+          id: makeId('ingredient'),
+          groupType: item.groupType,
+          name: item.name,
+          amount: item.amount,
+          sortOrder: index
+        })),
+        steps: input.steps.map((item, index) => ({
+          id: makeId('step'),
+          stepNo: index + 1,
+          title: item.title,
+          description: item.description,
+          image: item.image || input.coverImage || base.coverImage,
+          heat: item.heat,
+          minutes: item.minutes,
+          tips: item.tips
+        })),
+        tips: collectedTips(input.steps)
       }
       this.dishes.unshift(dish)
       this.persist()
       return dish.id
     },
-    async updateDish(id: string, input: Pick<Dish, 'name' | 'category' | 'description' | 'remark' | 'difficulty' | 'estimatedMinutes' | 'servings'>) {
+    async updateDish(id: string, input: EditableDishInput) {
       const existing = this.getDish(id)
       if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权编辑这道菜')
 
@@ -1321,7 +1349,35 @@ export const useKitchenStore = defineStore('kitchen', {
         return dish.id
       }
 
-      Object.assign(existing, input)
+      existing.name = input.name
+      existing.category = input.category
+      existing.coverImage = input.coverImage || existing.coverImage
+      existing.squareImage = input.coverImage || existing.squareImage
+      existing.detailImage = input.coverImage || existing.detailImage
+      existing.description = input.description
+      existing.remark = input.remark
+      existing.difficulty = input.difficulty
+      existing.estimatedMinutes = input.estimatedMinutes
+      existing.servings = input.servings
+      existing.tasteTags = input.tasteTags?.length ? input.tasteTags : existing.tasteTags
+      existing.ingredients = input.ingredients.map((item, index) => ({
+        id: existing.ingredients[index]?.id || makeId('ingredient'),
+        groupType: item.groupType,
+        name: item.name,
+        amount: item.amount,
+        sortOrder: index
+      }))
+      existing.steps = input.steps.map((item, index) => ({
+        id: existing.steps[index]?.id || makeId('step'),
+        stepNo: index + 1,
+        title: item.title,
+        description: item.description,
+        image: item.image || existing.coverImage,
+        heat: item.heat,
+        minutes: item.minutes,
+        tips: item.tips
+      }))
+      existing.tips = collectedTips(input.steps)
       this.persist()
       return existing.id
     },

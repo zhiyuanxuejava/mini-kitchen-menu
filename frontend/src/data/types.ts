@@ -44,6 +44,35 @@ export interface DishStep {
   tips: string
 }
 
+export interface EditableIngredientInput {
+  groupType: IngredientGroupType
+  name: string
+  amount: string
+}
+
+export interface EditableDishStepInput {
+  title: string
+  description: string
+  image: string
+  heat: string
+  minutes: number
+  tips: string
+}
+
+export interface EditableDishInput {
+  name: string
+  category: DishCategory
+  coverImage: string
+  description: string
+  remark?: string
+  difficulty: Difficulty
+  estimatedMinutes: number
+  servings: number
+  tasteTags?: string[]
+  ingredients: EditableIngredientInput[]
+  steps: EditableDishStepInput[]
+}
+
 export interface Dish {
   id: string
   name: string

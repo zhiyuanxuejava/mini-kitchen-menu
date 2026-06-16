@@ -361,6 +361,21 @@ const profileSchema = z.object({
   avatarUrl: z.string().trim().min(1).max(500).optional()
 })
 
+const dishIngredientSchema = z.object({
+  groupType: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  amount: z.string().trim().min(1)
+})
+
+const dishStepSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  image: z.string().trim().optional().default(''),
+  heat: z.string().trim().min(1).default('中火'),
+  minutes: z.number().int().positive(),
+  tips: z.string().trim().default('')
+})
+
 function isDefaultAvatarUrl(value?: string | null) {
   const next = value?.trim()
   return !next || next === defaultUserAvatarUrl
@@ -644,8 +659,8 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
       estimatedMinutes: z.number().int().positive().default(20),
       servings: z.number().int().positive().default(2),
       tasteTags: z.array(z.string()).default([]),
-      ingredients: z.array(z.object({ groupType: z.string(), name: z.string(), amount: z.string() })).default([]),
-      steps: z.array(z.object({ title: z.string(), description: z.string(), heat: z.string(), minutes: z.number().int(), tips: z.string().default('') })).default([])
+      ingredients: z.array(dishIngredientSchema).default([]),
+      steps: z.array(dishStepSchema).default([])
     })
     .parse(req.body)
 
@@ -668,7 +683,11 @@ app.post('/dishes', auth, async (req: AuthedRequest, res) => {
         create: body.ingredients.map((item, index) => ({ ...item, sortOrder: index }))
       },
       steps: {
-        create: body.steps.map((item, index) => ({ ...item, stepNo: index + 1 }))
+        create: body.steps.map((item, index) => ({
+          ...item,
+          image: item.image || body.coverImage,
+          stepNo: index + 1
+        }))
       }
     },
     include: {
@@ -713,14 +732,44 @@ app.put('/dishes/:id', auth, async (req: AuthedRequest, res) => {
       estimatedMinutes: z.number().int().positive().optional(),
       servings: z.number().int().positive().optional(),
       tasteTags: z.array(z.string()).optional(),
+      ingredients: z.array(dishIngredientSchema).optional(),
+      steps: z.array(dishStepSchema).optional(),
       isFavorite: z.boolean().optional(),
       status: z.enum(['draft', 'published', 'archived']).optional()
     })
     .parse(req.body)
-  const { tasteTags, ...data } = body
+  const { tasteTags, ingredients, steps, coverImage, ...data } = body
+  const nextCoverImage = coverImage ?? existing.coverImage
   const dish = await prisma.dish.update({
     where: { id },
-    data: { ...data, ...(tasteTags ? { tasteTags: JSON.stringify(tasteTags) } : {}) },
+    data: {
+      ...data,
+      ...(coverImage ? { coverImage } : {}),
+      ...(tasteTags ? { tasteTags: JSON.stringify(tasteTags) } : {}),
+      ...(ingredients
+        ? {
+            ingredients: {
+              deleteMany: {},
+              create: ingredients.map((item, index) => ({
+                ...item,
+                sortOrder: index
+              }))
+            }
+          }
+        : {}),
+      ...(steps
+        ? {
+            steps: {
+              deleteMany: {},
+              create: steps.map((item, index) => ({
+                ...item,
+                image: item.image || nextCoverImage,
+                stepNo: index + 1
+              }))
+            }
+          }
+        : {})
+    },
     include: {
       categoryRef: true,
       ingredients: { orderBy: { sortOrder: 'asc' } },

@@ -72,6 +72,7 @@
         <view class="step-copy">
           <text class="step-name">{{ step.title }}</text>
           <text class="step-desc">{{ step.description }}</text>
+          <image class="step-photo" :src="step.image" mode="aspectFill" />
         </view>
         <view class="step-meta">
           <text>🔥 火候：{{ step.heat }}</text>
@@ -388,6 +389,14 @@ function formatLearnedTime(value?: string) {
   color: $text-sub;
   font-size: 23rpx;
   line-height: 1.45;
+}
+
+.step-photo {
+  width: 100%;
+  height: 172rpx;
+  margin-top: 14rpx;
+  border-radius: 18rpx;
+  background: #f8f1eb;
 }
 
 .step-meta {
