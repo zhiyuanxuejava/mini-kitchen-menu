@@ -31,36 +31,43 @@
       </picker>
     </view>
 
-    <view v-if="entries.length" class="timeline">
-      <view v-for="entry in entries" :key="entry.id" class="timeline-item">
-        <view class="timeline-axis">
-          <view class="timeline-dot" />
-          <view class="timeline-line" />
-        </view>
-        <view class="timeline-card card" @tap="viewDish(entry.dish.id)">
-          <view class="timeline-head">
-            <view>
-              <text class="timeline-date">{{ formatLearnedTime(entry.learnedAt) }}</text>
-              <text class="timeline-title">{{ entry.dish.name }} {{ entry.dish.emoji }}</text>
-            </view>
-            <text class="timeline-badge">已学会</text>
+    <view v-if="monthlyGroups.length" class="timeline">
+      <TimelineGroup
+        v-for="(group, index) in monthlyGroups"
+        :key="group.monthKey"
+        :month-label="group.monthLabel"
+        :is-first="index === 0"
+        :is-last="index === monthlyGroups.length - 1"
+      >
+        <view v-for="entry in group.items" :key="entry.id" class="timeline-row">
+          <view class="timeline-day">
+            <view class="timeline-day-dot" />
+            <text class="timeline-day-label">{{ entry.dayLabel }}</text>
           </view>
-          <view class="timeline-body">
-            <image :src="entry.dish.coverImage" mode="aspectFill" />
-            <view class="timeline-copy">
-              <text class="timeline-desc line-clamp-2">{{ entry.dish.description }}</text>
-              <view class="timeline-meta">
-                <text>{{ entry.dish.difficulty }}</text>
-                <text>{{ entry.dish.estimatedMinutes }} 分钟</text>
-                <text>{{ entry.dish.tasteTags.slice(0, 2).join(' / ') || '家常菜' }}</text>
+          <view class="timeline-card card" @tap="viewDish(entry.dish.id)">
+            <view class="timeline-head">
+              <view>
+                <text class="timeline-title">{{ entry.dish.name }} {{ entry.dish.emoji }}</text>
+              </view>
+              <text class="timeline-badge">已学会</text>
+            </view>
+            <view class="timeline-body">
+              <image :src="entry.dish.coverImage" mode="aspectFill" />
+              <view class="timeline-copy">
+                <text class="timeline-desc line-clamp-2">{{ entry.dish.description }}</text>
+                <view class="timeline-meta">
+                  <text>{{ entry.dish.difficulty }}</text>
+                  <text>{{ entry.dish.estimatedMinutes }} 分钟</text>
+                  <text>{{ entry.dish.tasteTags.slice(0, 2).join(' / ') || '家常菜' }}</text>
+                </view>
               </view>
             </view>
           </view>
         </view>
-      </view>
+      </TimelineGroup>
     </view>
 
-    <EmptyState v-else title="还没有学会的菜品" desc="做完一道菜后，可以把它加入“我已学会”，这里会沉淀成时间线。" />
+    <EmptyState v-else title="时间线还是空的" desc="做完一道菜后把它加入“我已学会”，这里会按时间沉淀下来。" />
 
     <BottomTabbar active="mine" />
   </AppPage>
@@ -73,6 +80,8 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppPage from '@/components/AppPage.vue'
 import BottomTabbar from '@/components/BottomTabbar.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import TimelineGroup from '@/components/TimelineGroup.vue'
+import { groupByMonth } from '@/utils/timeline'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/labels'
 import type { Difficulty, DishCategory } from '@/data/types'
@@ -124,6 +133,8 @@ const entries = computed(() =>
     })
 )
 
+const monthlyGroups = computed(() => groupByMonth(entries.value, (entry) => entry.learnedAt))
+
 function onCategoryChange(event: { detail: { value: string | number } }) {
   const index = Number(event.detail.value)
   activeCategory.value = categories[index]?.key || 'all'
@@ -138,16 +149,6 @@ function viewDish(id: string) {
   uni.navigateTo({ url: `/pages/dish-detail/index?id=${id}` })
 }
 
-function formatLearnedTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const y = date.getFullYear()
-  const m = `${date.getMonth() + 1}`.padStart(2, '0')
-  const d = `${date.getDate()}`.padStart(2, '0')
-  const h = `${date.getHours()}`.padStart(2, '0')
-  const min = `${date.getMinutes()}`.padStart(2, '0')
-  return `${y}-${m}-${d} ${h}:${min}`
-}
 </script>
 
 <style scoped lang="scss">
@@ -225,42 +226,40 @@ function formatLearnedTime(value: string) {
 }
 
 .timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
+  display: block;
   padding-bottom: 18rpx;
 }
 
-.timeline-item {
+.timeline-row {
   display: grid;
-  grid-template-columns: 34rpx minmax(0, 1fr);
-  gap: 16rpx;
+  grid-template-columns: 80rpx 1fr;
+  align-items: flex-start;
+  gap: 0;
 }
 
-.timeline-axis {
+.timeline-row:not(:last-child) {
+  margin-bottom: 20rpx;
+}
+
+.timeline-day {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 8rpx;
+  padding-top: 14rpx;
 }
 
-.timeline-dot {
-  width: 18rpx;
-  height: 18rpx;
-  margin-top: 22rpx;
+.timeline-day-dot {
+  width: 14rpx;
+  height: 14rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, $primary-2 0%, $primary 100%);
+  background: $primary;
+  box-shadow: 0 0 0 3rpx #fff;
 }
 
-.timeline-line {
-  width: 4rpx;
-  flex: 1;
-  margin-top: 8rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 144, 67, 0.18);
-}
-
-.timeline-item:last-child .timeline-line {
-  opacity: 0;
+.timeline-day-label {
+  color: $text-sub;
+  font-size: 24rpx;
 }
 
 .timeline-card {
@@ -274,19 +273,8 @@ function formatLearnedTime(value: string) {
   gap: 16rpx;
 }
 
-.timeline-date,
 .timeline-title {
   display: block;
-}
-
-.timeline-date {
-  color: $primary;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.timeline-title {
-  margin-top: 8rpx;
   color: $text-main;
   font-size: 29rpx;
   font-weight: 900;
@@ -303,16 +291,16 @@ function formatLearnedTime(value: string) {
 
 .timeline-body {
   display: grid;
-  grid-template-columns: 160rpx minmax(0, 1fr);
+  grid-template-columns: 188rpx minmax(0, 1fr);
   gap: 18rpx;
-  margin-top: 18rpx;
-  align-items: center;
+  margin-top: 16rpx;
 }
 
 .timeline-body image {
-  width: 160rpx;
-  height: 116rpx;
-  border-radius: 18rpx;
+  width: 188rpx;
+  height: 152rpx;
+  border-radius: 20rpx;
+  background: #f8f1eb;
 }
 
 .timeline-copy {
@@ -320,8 +308,9 @@ function formatLearnedTime(value: string) {
 }
 
 .timeline-desc {
+  display: block;
   color: $text-sub;
-  font-size: 23rpx;
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
@@ -338,6 +327,5 @@ function formatLearnedTime(value: string) {
   background: #fff7ef;
   color: $text-main;
   font-size: 21rpx;
-  font-weight: 700;
 }
 </style>
