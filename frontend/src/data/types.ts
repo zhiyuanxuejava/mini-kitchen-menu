@@ -99,6 +99,7 @@ export interface Dish {
   ingredients: Ingredient[]
   steps: DishStep[]
   tips: string[]
+  createdAt?: string
 }
 
 export interface MenuItem {

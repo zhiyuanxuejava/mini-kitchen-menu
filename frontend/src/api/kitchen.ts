@@ -113,6 +113,7 @@ type BackendDish = {
   learnedAt?: string | null
   ingredients?: BackendIngredient[]
   steps?: BackendStep[]
+  createdAt?: string
 }
 
 type AuthResponse = {
@@ -415,7 +416,8 @@ export function normalizeDish(row: BackendDish): Dish {
       sortOrder: item.sortOrder
     })),
     steps,
-    tips: tips.length ? tips : ['出锅前尝味，根据口味微调盐分。']
+    tips: tips.length ? tips : ['出锅前尝味，根据口味微调盐分。'],
+    createdAt: row.createdAt
   }
 }
 
