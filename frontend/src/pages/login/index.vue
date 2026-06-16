@@ -7,10 +7,6 @@
     </view>
 
     <view class="login-card card">
-      <view class="mode-tabs">
-        <button :class="{ active: mode === 'login' }" @tap="mode = 'login'">邮箱登录</button>
-        <button :class="{ active: mode === 'register' }" @tap="mode = 'register'">注册账号</button>
-      </view>
       <view class="field">
         <text>邮箱</text>
         <input v-model="email" type="text" placeholder="name@example.com" />
@@ -20,12 +16,13 @@
         <input v-model="password" password placeholder="请输入密码" />
       </view>
       <button class="primary-btn submit" hover-class="tap" @tap="submit">
-        {{ store.loading ? '连接厨房中...' : mode === 'login' ? '登录并进入厨房' : '注册并开始点菜' }}
+        {{ store.loading ? '连接厨房中...' : '登录并进入厨房' }}
       </button>
       <button class="wechat" hover-class="tap" @tap="wechatLogin">
         <image :src="icons.chefHat" mode="aspectFit" />
         <text>微信一键登录</text>
       </button>
+      <button class="link-btn" hover-class="tap" @tap="goRegister">还没账号？去注册</button>
       <view class="login-tip">
         <text class="tip-title">登录方式说明</text>
         <text class="tip-copy">微信登录后可以在“设置”里继续绑定邮箱密码，后续两种方式都能登录同一个账号。</text>
@@ -37,16 +34,27 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import AppPage from '@/components/AppPage.vue'
+import { ApiError } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
 import { syncWechatPrivacySetting } from '@/utils/wechat-privacy'
 
 const store = useKitchenStore()
-const mode = ref<'login' | 'register'>('login')
 const email = ref('')
 const password = ref('')
+
+onLoad((options) => {
+  const queryEmail = options?.email
+  if (typeof queryEmail === 'string' && queryEmail) {
+    try {
+      email.value = decodeURIComponent(queryEmail)
+    } catch {
+      email.value = queryEmail
+    }
+  }
+})
 
 onShow(() => {
   store.hydrate()
@@ -59,17 +67,44 @@ onShow(() => {
 })
 
 async function submit() {
-  if (!email.value.trim() || !password.value.trim()) {
+  const nextEmail = email.value.trim()
+  if (!nextEmail || !password.value.trim()) {
     uni.showToast({ title: '请输入邮箱和密码', icon: 'none' })
     return
   }
   try {
-    if (mode.value === 'login') await store.loginWithEmail(email.value.trim(), password.value.trim())
-    else await store.registerWithEmail(email.value.trim(), password.value.trim())
+    await store.loginWithEmail(nextEmail, password.value.trim())
     uni.reLaunch({ url: '/pages/home/index' })
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'EMAIL_NOT_REGISTERED') {
+      uni.showModal({
+        title: '该邮箱还没注册',
+        content: '是否前往注册？',
+        confirmText: '去注册',
+        cancelText: '取消',
+        success: ({ confirm }) => {
+          if (!confirm) return
+          uni.redirectTo({
+            url: `/pages/register/index?email=${encodeURIComponent(nextEmail)}`
+          })
+        }
+      })
+      return
+    }
+    if (error instanceof ApiError && error.code === 'PASSWORD_WRONG') {
+      uni.showToast({ title: '密码错误，请重试', icon: 'none' })
+      return
+    }
     uni.showToast({ title: store.apiError || '登录失败', icon: 'none' })
   }
+}
+
+function goRegister() {
+  const nextEmail = email.value.trim()
+  const url = nextEmail
+    ? `/pages/register/index?email=${encodeURIComponent(nextEmail)}`
+    : '/pages/register/index'
+  uni.navigateTo({ url })
 }
 
 async function wechatLogin() {
@@ -121,32 +156,6 @@ async function wechatLogin() {
   padding: 34rpx 30rpx 30rpx;
 }
 
-.mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  padding: 8rpx;
-  border-radius: 999rpx;
-  background: #fff6ee;
-  gap: 8rpx;
-}
-
-.mode-tabs button {
-  height: 66rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999rpx;
-  color: $text-sub;
-  font-size: 27rpx;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.mode-tabs button.active {
-  color: #fff;
-  background: linear-gradient(135deg, $primary-2, $primary);
-}
-
 .field {
   margin-top: 26rpx;
 }
@@ -193,6 +202,19 @@ async function wechatLogin() {
 .wechat image {
   width: 40rpx;
   height: 40rpx;
+}
+
+.link-btn {
+  height: 70rpx;
+  margin-top: 18rpx;
+  background: transparent;
+  color: $primary;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.link-btn::after {
+  border: 0;
 }
 
 .login-tip {
