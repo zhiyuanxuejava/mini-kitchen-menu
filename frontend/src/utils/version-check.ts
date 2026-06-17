@@ -20,12 +20,22 @@ export function snoozeVersionUpdate(): void {
   // #endif
 }
 
+export async function clearRuntimeCache(options?: { preserveAuth?: boolean }): Promise<void> {
+  removeAppStorageCache(options)
+  await clearCacheStorage()
+}
+
+export async function forceReloadToHash(hash = '', options?: { preserveAuth?: boolean }): Promise<void> {
+  // #ifdef H5
+  await clearRuntimeCache(options)
+  const targetHash = hash || window.location.hash || '#/pages/home/index'
+  window.location.replace(buildForcedReloadUrl(targetHash))
+  // #endif
+}
+
 export async function reloadToLatestVersion(): Promise<void> {
   versionUpdateState.visible = false
-  // #ifdef H5
-  await clearRuntimeCachePreservingAuth()
-  window.location.reload()
-  // #endif
+  await forceReloadToHash(window.location.hash, { preserveAuth: true })
 }
 
 // #ifdef H5
@@ -67,8 +77,15 @@ async function fetchServerVersion(): Promise<string | null> {
   }
 }
 
-function removeStorageKey(key: string): void {
-  if (key === AUTH_STORAGE_KEY) return
+function buildForcedReloadUrl(hash: string): string {
+  const url = new URL(window.location.href)
+  url.searchParams.set('_reload', String(Date.now()))
+  url.hash = hash.startsWith('#') ? hash : `#${hash}`
+  return url.toString()
+}
+
+function removeStorageKey(key: string, preserveAuth: boolean): void {
+  if (preserveAuth && key === AUTH_STORAGE_KEY) return
   try {
     uni.removeStorageSync(key)
   } catch {}
@@ -80,14 +97,15 @@ function removeStorageKey(key: string): void {
   } catch {}
 }
 
-function removeAppStorageCache(): void {
-  for (const key of CACHE_STORAGE_KEYS) removeStorageKey(key)
+function removeAppStorageCache(options?: { preserveAuth?: boolean }): void {
+  const preserveAuth = options?.preserveAuth !== false
+  for (const key of CACHE_STORAGE_KEYS) removeStorageKey(key, preserveAuth)
 
   for (const storage of [window.localStorage, window.sessionStorage]) {
     try {
       for (let index = storage.length - 1; index >= 0; index -= 1) {
         const key = storage.key(index)
-        if (key && key.startsWith(APP_STORAGE_PREFIX) && key !== AUTH_STORAGE_KEY) {
+        if (key && key.startsWith(APP_STORAGE_PREFIX) && (!preserveAuth || key !== AUTH_STORAGE_KEY)) {
           storage.removeItem(key)
         }
       }
@@ -105,11 +123,6 @@ async function clearCacheStorage(): Promise<void> {
         .map((key) => window.caches.delete(key))
     )
   } catch {}
-}
-
-async function clearRuntimeCachePreservingAuth(): Promise<void> {
-  removeAppStorageCache()
-  await clearCacheStorage()
 }
 
 async function checkVersion(): Promise<void> {

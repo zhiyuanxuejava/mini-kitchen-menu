@@ -21,6 +21,7 @@ import type {
   UserProfile
 } from '@/data/types'
 import { resolvedDishSteps } from '@/utils/dish-steps'
+import { forceReloadToHash } from '@/utils/version-check'
 
 const LEGACY_STORAGE_KEY = 'zhangshao-menu-state'
 const AUTH_STORAGE_KEY = 'zhangshao-menu-auth'
@@ -1005,6 +1006,14 @@ export const useKitchenStore = defineStore('kitchen', {
       removePersistedObject(AUTH_STORAGE_KEY)
       removePersistedObject(CACHE_STORAGE_KEY)
       removePersistedObject(LEGACY_STORAGE_KEY)
+    },
+    async clearCacheAndForceRelogin() {
+      this.logout()
+      if (typeof window !== 'undefined') {
+        await forceReloadToHash('#/pages/login/index', { preserveAuth: false })
+        return
+      }
+      uni.reLaunch({ url: '/pages/login/index' })
     },
     async refreshSessionData() {
       if (!this.token) return

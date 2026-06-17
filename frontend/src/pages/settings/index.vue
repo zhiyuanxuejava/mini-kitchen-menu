@@ -140,6 +140,49 @@
           <text class="setting-arrow">›</text>
         </view>
       </button>
+      <button class="setting-row danger-row" hover-class="tap" @tap="openReloginDialog">
+        <view class="setting-icon danger">
+          <image :src="icons.upload" mode="aspectFit" />
+        </view>
+        <view class="setting-copy">
+          <text class="setting-title">清除缓存并重新登录</text>
+          <text class="setting-sub">适合手机版一直拿到旧页面、图片上传后不回显时使用</text>
+        </view>
+        <view class="setting-meta">
+          <text class="setting-value danger-text">强制刷新</text>
+          <text class="setting-arrow">›</text>
+        </view>
+      </button>
+    </view>
+
+    <view v-if="reloginDialogVisible" class="confirm-layer">
+      <view class="confirm-mask" @tap="closeReloginDialog" />
+      <view class="confirm-card card" @tap.stop>
+        <view class="confirm-glow" />
+        <view class="confirm-head">
+          <view class="confirm-badge">
+            <image :src="icons.upload" mode="aspectFit" />
+          </view>
+          <view class="confirm-copy">
+            <text class="confirm-title">清除缓存并重新登录</text>
+            <text class="confirm-sub">会强制拉取最新页面资源，适合安卓浏览器缓存顽固不更新时使用。</text>
+          </view>
+        </view>
+
+        <view class="confirm-note">
+          <text class="confirm-note-title">会发生什么</text>
+          <text class="confirm-note-item">1. 清掉本地页面缓存和业务缓存</text>
+          <text class="confirm-note-item">2. 退出当前账号</text>
+          <text class="confirm-note-item">3. 重新打开登录页并强制请求最新版</text>
+        </view>
+
+        <view class="confirm-actions">
+          <button class="ghost-btn confirm-btn" hover-class="tap" @tap="closeReloginDialog">取消</button>
+          <button class="primary-btn confirm-btn" hover-class="tap" :disabled="clearingCache" @tap="confirmClearCacheAndRelogin">
+            {{ clearingCache ? '处理中...' : '确认执行' }}
+          </button>
+        </view>
+      </view>
     </view>
 
     <button class="logout-btn" hover-class="tap" @tap="logout">退出登录</button>
@@ -158,6 +201,8 @@ import { openWechatPrivacyContract, syncWechatPrivacySetting, wechatPrivacyState
 
 const store = useKitchenStore()
 const refreshing = ref(false)
+const reloginDialogVisible = ref(false)
+const clearingCache = ref(false)
 const isWechatRuntime = typeof globalThis !== 'undefined' && 'wx' in globalThis
 
 onShow(async () => {
@@ -216,6 +261,27 @@ function goRecords() {
 
 function goRatings() {
   uni.navigateTo({ url: '/pages/rating-list/index' })
+}
+
+function openReloginDialog() {
+  reloginDialogVisible.value = true
+}
+
+function closeReloginDialog() {
+  if (clearingCache.value) return
+  reloginDialogVisible.value = false
+}
+
+async function confirmClearCacheAndRelogin() {
+  if (clearingCache.value) return
+  clearingCache.value = true
+  try {
+    await store.clearCacheAndForceRelogin()
+  } catch (error) {
+    clearingCache.value = false
+    reloginDialogVisible.value = false
+    uni.showToast({ title: error instanceof Error ? error.message : '处理失败', icon: 'none' })
+  }
 }
 
 async function openPrivacyGuide() {
@@ -413,6 +479,7 @@ function logout() {
 }
 
 .setting-title,
+.setting-sub,
 .setting-value {
   display: block;
 }
@@ -421,6 +488,13 @@ function logout() {
   color: $text-main;
   font-size: 28rpx;
   font-weight: 900;
+}
+
+.setting-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.5;
 }
 
 .setting-meta {
@@ -445,6 +519,142 @@ function logout() {
   color: #b6a9a0;
   font-size: 38rpx;
   line-height: 1;
+}
+
+.danger-row {
+  align-items: flex-start;
+  padding-top: 22rpx;
+  padding-bottom: 22rpx;
+}
+
+.setting-icon.danger {
+  background: linear-gradient(180deg, #fff1e7 0%, #ffe7d7 100%);
+}
+
+.danger-text {
+  color: #d34b2f;
+}
+
+.confirm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 64;
+}
+
+.confirm-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(48, 30, 20, 0.46);
+  backdrop-filter: blur(8rpx);
+}
+
+.confirm-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(30rpx + env(safe-area-inset-bottom));
+  width: calc(100% - 56rpx);
+  max-width: 404px;
+  padding: 32rpx 28rpx 28rpx;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(255, 154, 96, 0.2), transparent 190rpx),
+    linear-gradient(180deg, #fffefc 0%, #fff7ef 100%);
+  transform: translateX(-50%);
+}
+
+.confirm-glow {
+  position: absolute;
+  right: -28rpx;
+  top: -26rpx;
+  width: 196rpx;
+  height: 196rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 167, 102, 0.2) 0%, rgba(255, 167, 102, 0) 72%);
+}
+
+.confirm-head {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 88rpx minmax(0, 1fr);
+  gap: 18rpx;
+  align-items: center;
+}
+
+.confirm-badge {
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: rgba(255, 246, 237, 0.96);
+}
+
+.confirm-badge image {
+  width: 46rpx;
+  height: 46rpx;
+}
+
+.confirm-copy {
+  min-width: 0;
+}
+
+.confirm-title,
+.confirm-sub,
+.confirm-note-title,
+.confirm-note-item {
+  display: block;
+}
+
+.confirm-title {
+  color: $text-main;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.confirm-sub {
+  margin-top: 8rpx;
+  color: $text-sub;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.confirm-note {
+  position: relative;
+  z-index: 1;
+  margin-top: 22rpx;
+  padding: 20rpx 18rpx;
+  border: 1rpx solid rgba(255, 202, 169, 0.92);
+  border-radius: 22rpx;
+  background: rgba(255, 252, 247, 0.94);
+}
+
+.confirm-note-title {
+  color: $primary;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.confirm-note-item {
+  margin-top: 10rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.confirm-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.confirm-btn {
+  width: 100%;
 }
 
 .logout-btn {
