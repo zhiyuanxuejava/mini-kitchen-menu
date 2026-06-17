@@ -6,7 +6,7 @@
 
     <view class="status-tabs">
       <button v-for="tab in tabs" :key="tab.key" :class="{ active: active === tab.key }" @tap="active = tab.key">
-        {{ tab.label }}
+        <text class="status-tab-label">{{ tab.label }}</text>
       </button>
     </view>
 
@@ -160,16 +160,29 @@ function formatDuration(durationMs: number) {
 }
 
 .status-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 72rpx;
+  padding: 0 16rpx;
   border-radius: 999rpx;
   color: $text-sub;
   font-size: 29rpx;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .status-tabs button.active {
   color: #fff;
   background: linear-gradient(135deg, $primary-2, $primary);
+}
+
+.status-tab-label {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .cook-list {
