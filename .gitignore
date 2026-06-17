@@ -12,6 +12,7 @@ node_modules/
 !admin/.env.example
 frontend/project.config.json
 frontend/src/manifest.json
+frontend/.h5-version.json
 
 # Logs
 *.log
