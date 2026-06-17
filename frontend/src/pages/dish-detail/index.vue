@@ -26,18 +26,36 @@
         </view>
       </view>
       <image class="hero-image" :src="dish.detailImage" mode="aspectFill" />
-      <text class="photo-count">1 / {{ dish.steps.length + 3 }}</text>
+      <text class="photo-count">1 / {{ displaySteps.length + 3 }}</text>
     </view>
 
-    <view class="detail-actions">
-      <button v-if="canToggleLearned" :class="[dish.learnedAt ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleLearned">
-        {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
-      </button>
-      <button :class="[dish.isFavorite ? 'primary-btn' : 'ghost-btn']" hover-class="tap" @tap="toggleFavorite">
-        {{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}
-      </button>
-      <button class="primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
-      <button v-if="canEdit" class="ghost-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
+    <view class="detail-actions card">
+      <view class="detail-actions-head">
+        <text class="detail-actions-kicker">快捷操作</text>
+        <text class="detail-actions-sub">收藏、学习或直接加入今天的菜单</text>
+      </view>
+
+      <button class="detail-primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
+
+      <view class="detail-secondary-grid">
+        <button
+          v-if="canToggleLearned"
+          :class="['detail-secondary-btn', dish.learnedAt ? 'active-soft' : '']"
+          hover-class="tap"
+          @tap="toggleLearned"
+        >
+          {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
+        </button>
+        <button
+          :class="['detail-secondary-btn', dish.isFavorite ? 'active-warm' : '']"
+          hover-class="tap"
+          @tap="toggleFavorite"
+        >
+          {{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}
+        </button>
+        <button v-if="canEdit" class="detail-secondary-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
+        <view v-if="!canEdit && canToggleLearned" class="detail-secondary-placeholder" />
+      </view>
     </view>
 
     <view v-if="dish.learnedAt" class="learned-banner card">
@@ -69,8 +87,11 @@
     </view>
 
     <view class="section-card card">
-      <SectionTitle title="做法步骤" />
-      <view v-for="step in dish.steps" :key="step.id" class="step-row">
+      <SectionTitle :title="hasStructuredSteps ? '做法步骤' : '默认做法'" />
+      <view v-if="!hasStructuredSteps" class="step-fallback-note">
+        <text>这道菜还没有拆分详细步骤，当前按菜品描述生成了默认第 1 步，后续可在编辑菜品时继续补充。</text>
+      </view>
+      <view v-for="step in displaySteps" :key="step.id" class="step-row">
         <text class="step-no">{{ step.stepNo }}</text>
         <view class="step-copy">
           <text class="step-name">{{ step.title }}</text>
@@ -110,6 +131,7 @@ import { icons } from '@/data/assets'
 import { groupLabels } from '@/data/labels'
 import type { IngredientGroupType } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
+import { hasStructuredDishSteps, resolvedDishSteps } from '@/utils/dish-steps'
 
 const store = useKitchenStore()
 const id = ref('hongshaorou')
@@ -128,6 +150,8 @@ const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
 const canToggleLearned = computed(() => Boolean(dish.value?.id))
 const learnedTimeLabel = computed(() => formatLearnedTime(dish.value?.learnedAt))
+const displaySteps = computed(() => resolvedDishSteps(dish.value))
+const hasStructuredSteps = computed(() => hasStructuredDishSteps(dish.value))
 const ingredientGroups = computed(() => {
   const types: IngredientGroupType[] = ['main', 'side', 'seasoning']
   return types.map((type) => ({
@@ -261,15 +285,114 @@ function formatLearnedTime(value?: string) {
 }
 
 .detail-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
+  padding: 24rpx 22rpx 22rpx;
   margin: 28rpx 0;
+  background:
+    radial-gradient(circle at 92% 14%, rgba(255, 178, 118, 0.18), transparent 180rpx),
+    linear-gradient(180deg, #fffefc 0%, #fff8f1 100%);
 }
 
-.detail-actions .primary-btn:only-child,
-.detail-actions .ghost-btn:only-child {
-  grid-column: 1 / -1;
+.detail-actions-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 18rpx;
+}
+
+.detail-actions-kicker,
+.detail-actions-sub {
+  display: block;
+}
+
+.detail-actions-kicker {
+  color: $text-main;
+  font-size: 24rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.detail-actions-sub {
+  color: $text-sub;
+  font-size: 22rpx;
+  text-align: right;
+  line-height: 1.45;
+}
+
+.detail-primary-btn,
+.detail-actions .detail-primary-btn,
+.detail-actions uni-button.detail-primary-btn {
+  width: 100%;
+  height: 96rpx;
+  margin: 0;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, $primary-2 0%, $primary 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 900;
+  letter-spacing: 1rpx;
+  box-shadow:
+    0 18rpx 34rpx rgba(255, 123, 37, 0.18),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.18);
+}
+
+.detail-primary-btn::after,
+.detail-actions .detail-primary-btn::after {
+  border: 0;
+}
+
+.detail-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 14rpx;
+}
+
+.detail-secondary-btn,
+.detail-actions .detail-secondary-btn,
+.detail-actions uni-button.detail-secondary-btn {
+  width: 100%;
+  min-width: 0;
+  height: 86rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 26rpx;
+  border: 1rpx solid rgba(255, 189, 145, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 245, 0.96) 100%);
+  color: $primary;
+  font-size: 27rpx;
+  font-weight: 800;
+  letter-spacing: 0.5rpx;
+  box-shadow:
+    inset 0 0 0 1rpx rgba(255, 247, 240, 0.92),
+    0 8rpx 18rpx rgba(255, 163, 98, 0.06);
+}
+
+.detail-secondary-btn::after,
+.detail-actions .detail-secondary-btn::after {
+  border: 0;
+}
+
+.detail-secondary-btn.active-warm {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ffb867 0%, $primary 100%);
+  color: #fff;
+  box-shadow:
+    0 16rpx 28rpx rgba(255, 123, 37, 0.16),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.16);
+}
+
+.detail-secondary-btn.active-soft {
+  border-color: rgba(196, 224, 174, 0.8);
+  background: linear-gradient(135deg, #f9fdf4 0%, #eef8e8 100%);
+  color: #6f9f4f;
+}
+
+.detail-secondary-placeholder {
+  min-height: 86rpx;
 }
 
 .learned-banner {
@@ -365,6 +488,16 @@ function formatLearnedTime(value?: string) {
   align-items: start;
   padding: 20rpx 0;
   border-bottom: 1rpx solid #f3e7df;
+}
+
+.step-fallback-note {
+  margin: 10rpx 0 8rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  background: #fff8f1;
+  color: $text-sub;
+  font-size: 23rpx;
+  line-height: 1.55;
 }
 
 .step-row:last-child {

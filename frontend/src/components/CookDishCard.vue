@@ -5,7 +5,7 @@
       <text class="name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
       <view :class="['status-pill', item.cookStatus]">{{ statusText }}</view>
       <view v-if="item.cookStatus === 'cooking'" class="progress-wrap">
-        <text>第 {{ item.currentStep }} 步 / 共 {{ dish.steps.length }} 步</text>
+        <text>第 {{ item.currentStep }} 步 / 共 {{ totalSteps }} 步</text>
         <view class="bar"><view :style="{ width: progress + '%' }" /></view>
       </view>
       <view class="meta-row">
@@ -23,6 +23,7 @@
 import { computed } from 'vue'
 import { icons } from '@/data/assets'
 import type { CookStatus, Dish, MenuItem } from '@/data/types'
+import { resolvedDishSteps } from '@/utils/dish-steps'
 
 const props = defineProps<{
   item: MenuItem
@@ -33,7 +34,8 @@ defineEmits<{
   action: [itemId: string, status: CookStatus]
 }>()
 
-const progress = computed(() => Math.round((props.item.currentStep / props.dish.steps.length) * 100))
+const totalSteps = computed(() => resolvedDishSteps(props.dish).length)
+const progress = computed(() => Math.round((props.item.currentStep / totalSteps.value) * 100))
 const doneTime = computed(() => props.item.finishedAt?.slice(-5) || '刚刚')
 const statusText = computed(() => {
   if (props.item.cookStatus === 'done') return '已完成'

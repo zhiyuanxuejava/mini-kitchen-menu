@@ -20,6 +20,7 @@ import type {
   TodayMenu,
   UserProfile
 } from '@/data/types'
+import { resolvedDishSteps } from '@/utils/dish-steps'
 
 const LEGACY_STORAGE_KEY = 'zhangshao-menu-state'
 const AUTH_STORAGE_KEY = 'zhangshao-menu-auth'
@@ -75,12 +76,13 @@ function fieldMatchScore(text: string, keyword: string) {
 }
 
 function dishSearchFields(dish: Dish): DishSearchField[] {
+  const steps = resolvedDishSteps(dish)
   return [
     { text: dish.name, weight: 5 },
     { text: dish.description, weight: 2 },
     ...dish.tasteTags.map((text) => ({ text, weight: 2 })),
     ...dish.ingredients.map((item) => ({ text: item.name, weight: 4 })),
-    ...dish.steps.flatMap((step) => [
+    ...steps.flatMap((step) => [
       { text: step.title, weight: 2 },
       { text: step.description, weight: 1 }
     ]),
@@ -816,7 +818,8 @@ export const useKitchenStore = defineStore('kitchen', {
     buildStepTimerContext(itemId: string): KitchenTimer['context'] {
       const item = this.menu.items.find((candidate) => candidate.id === itemId)
       const dish = item ? this.getDish(item.dishId) : undefined
-      const step = item && dish ? dish.steps[(item.currentStep || 1) - 1] : undefined
+      const steps = dish ? resolvedDishSteps(dish) : []
+      const step = item ? steps[(item.currentStep || 1) - 1] || steps[0] : undefined
       return {
         type: 'step',
         itemId,
@@ -1237,7 +1240,7 @@ export const useKitchenStore = defineStore('kitchen', {
       const item = this.menu.items.find((candidate) => candidate.id === itemId)
       if (!item) return
       const dish = this.getDish(item.dishId)
-      const max = dish?.steps.length || 1
+      const max = dish ? resolvedDishSteps(dish).length : 1
       item.currentStep = Math.min(Math.max(1, stepNo), max)
       item.cookStatus = item.currentStep >= max ? item.cookStatus : 'cooking'
       if (!item.startedAt) item.startedAt = nowText()
@@ -1247,7 +1250,7 @@ export const useKitchenStore = defineStore('kitchen', {
       const item = this.menu.items.find((candidate) => candidate.id === itemId)
       if (!item) return
       const dish = this.getDish(item.dishId)
-      item.currentStep = dish?.steps.length || item.currentStep
+      item.currentStep = dish ? resolvedDishSteps(dish).length : item.currentStep
       item.cookStatus = 'done'
       item.finishedAt = nowText()
       this.persist()

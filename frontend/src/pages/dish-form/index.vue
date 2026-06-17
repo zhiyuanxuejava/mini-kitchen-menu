@@ -75,10 +75,10 @@
           </view>
         </view>
 
-        <view class="field field-inline">
-          <view>
+        <view class="field field-stack">
+          <view class="field-copy">
             <text>预计耗时</text>
-            <text class="field-mini">可手动调整，默认会按步骤总时长自动汇总</text>
+            <text class="field-mini">可手动调整，不填步骤时按这里展示</text>
           </view>
           <view class="minutes-wrap">
             <input v-model.number="form.estimatedMinutes" type="number" @blur="normalizeEstimatedMinutes" />
@@ -141,17 +141,17 @@
         <view class="section-head with-action">
           <view>
             <text class="section-title">做法步骤</text>
-            <text class="section-sub">步骤图、火候、时长、注意事项都会同步到详情页和做菜流程。</text>
+            <text class="section-sub">不填也可以，默认会按菜品描述生成第 1 步。</text>
           </view>
           <button class="ghost-btn add-inline-btn" hover-class="tap" @tap="addStep">＋ 添加步骤</button>
         </view>
 
-        <view class="timeline-note">
-          <text>当前共 {{ form.steps.length }} 步，步骤总时长 {{ totalStepMinutes }} 分钟。</text>
+        <view v-if="form.steps.length" class="timeline-note">
+          <text>{{ stepSummaryText }}</text>
           <button class="ghost-btn sync-btn" hover-class="tap" @tap="syncEstimatedMinutesFromSteps">同步到预计耗时</button>
         </view>
 
-        <view class="step-list">
+        <view v-if="form.steps.length" class="step-list">
           <view v-for="(step, index) in form.steps" :key="step.id" class="step-card">
             <view class="step-head">
               <view class="step-index">
@@ -201,10 +201,10 @@
             </view>
           </view>
         </view>
-      </view>
 
-      <view class="notice">
-        完整保存后，菜品详情会展示你的食材和步骤；做菜流程会直接按步骤时长、步骤图和提示信息来走。
+        <view v-else class="empty-box empty-steps-box">
+          <text>当前未填写步骤，将使用菜品描述作为默认第 1 步。</text>
+        </view>
       </view>
     </view>
 
@@ -278,6 +278,10 @@ const filteredIngredients = computed(() =>
 const totalStepMinutes = computed(() =>
   form.steps.reduce((sum, step) => sum + Math.max(1, Number(step.minutes) || 0), 0)
 )
+const stepSummaryText = computed(() => {
+  if (!form.steps.length) return '当前未填写步骤，保存后会自动生成默认第 1 步。'
+  return `当前共 ${form.steps.length} 步，步骤总时长 ${totalStepMinutes.value} 分钟。`
+})
 
 onLoad((query) => {
   if (query?.id && typeof query.id === 'string') {
@@ -334,7 +338,6 @@ async function loadDishForEdit() {
 
 function ensureMinimumDrafts() {
   if (!form.ingredients.length) addIngredient()
-  if (!form.steps.length) addStep()
 }
 
 function makeId(prefix: string) {
@@ -392,10 +395,6 @@ function addStep() {
 }
 
 function removeStep(id: string) {
-  if (form.steps.length <= 1) {
-    uni.showToast({ title: '至少保留一个步骤', icon: 'none' })
-    return
-  }
   form.steps = form.steps.filter((item) => item.id !== id)
   syncEstimatedMinutesFromSteps()
 }
@@ -427,6 +426,10 @@ function clampPositiveInt(value: number, fallback: number) {
 }
 
 function syncEstimatedMinutesFromSteps() {
+  if (!form.steps.length) {
+    form.estimatedMinutes = Math.max(1, clampPositiveInt(form.estimatedMinutes, 20))
+    return
+  }
   form.estimatedMinutes = Math.max(1, totalStepMinutes.value || form.estimatedMinutes || 1)
 }
 
@@ -504,11 +507,6 @@ function collectPayload(): EditableDishInput | null {
       tips: item.tips.trim()
     }))
     .filter((item) => item.title && item.description)
-
-  if (!steps.length) {
-    uni.showToast({ title: '请至少填写一个完整步骤', icon: 'none' })
-    return null
-  }
 
   return {
     name,
@@ -723,11 +721,15 @@ function removeDish() {
   font-weight: 900;
 }
 
-.field-inline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.field-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 214rpx;
   gap: 18rpx;
+  align-items: end;
+}
+
+.field-copy {
+  min-width: 0;
 }
 
 .field-mini {
@@ -810,7 +812,7 @@ textarea {
 }
 
 .minutes-wrap {
-  min-width: 214rpx;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10rpx;
@@ -922,6 +924,10 @@ textarea {
   text-align: center;
 }
 
+.empty-steps-box {
+  margin-top: 20rpx;
+}
+
 .timeline-note {
   display: flex;
   align-items: center;
@@ -992,16 +998,6 @@ textarea {
 .step-media-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 14rpx;
-}
-
-.notice {
-  margin-top: 32rpx;
-  padding: 22rpx;
-  border-radius: 18rpx;
-  background: #fff7ef;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 .actions {

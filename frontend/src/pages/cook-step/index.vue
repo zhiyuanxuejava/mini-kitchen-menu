@@ -7,7 +7,7 @@
       <image class="dish-thumb" :src="dish.squareImage" mode="aspectFill" />
       <view class="head-copy">
         <text class="name line-clamp-1">{{ dish.name }} {{ dish.emoji }}</text>
-        <text>第 <strong>{{ item.currentStep }}</strong> 步 / 共 {{ dish.steps.length }} 步</text>
+        <text>第 <strong>{{ item.currentStep }}</strong> 步 / 共 {{ displaySteps.length }} 步</text>
       </view>
       <view class="remain">
         <image :src="icons.clockOrange" mode="aspectFit" />
@@ -16,7 +16,11 @@
       </view>
     </view>
 
-    <StepProgress :steps="dish.steps" :current="item.currentStep" />
+    <view v-if="!hasStructuredSteps" class="fallback-step-banner card">
+      <text>这道菜未填写详细步骤，当前使用默认第 1 步继续做菜。</text>
+    </view>
+
+    <StepProgress :steps="displaySteps" :current="item.currentStep" />
     <StepCookCard :step="currentStep" />
 
     <view class="timer-panel card">
@@ -164,6 +168,7 @@ import StepProgress from '@/components/StepProgress.vue'
 import { icons } from '@/data/assets'
 import type { KitchenTimer } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
+import { hasStructuredDishSteps, resolvedDishSteps } from '@/utils/dish-steps'
 import { primeKitchenTimerAlert } from '@/utils/kitchen-timer-alert'
 
 const store = useKitchenStore()
@@ -200,17 +205,19 @@ onBeforeUnmount(() => {
 
 const item = computed(() => store.menu.items.find((candidate) => candidate.id === itemId.value))
 const dish = computed(() => (item.value ? store.getDish(item.value.dishId) : undefined))
+const displaySteps = computed(() => resolvedDishSteps(dish.value))
+const hasStructuredSteps = computed(() => hasStructuredDishSteps(dish.value))
 const currentStep = computed(() => {
-  const currentDish = dish.value
-  if (!currentDish?.steps?.length) return undefined
+  const steps = displaySteps.value
+  if (!steps.length) return undefined
   const stepIndex = Math.max(0, (item.value?.currentStep || 1) - 1)
-  return currentDish.steps[stepIndex] || currentDish.steps[0]
+  return steps[stepIndex] || steps[0]
 })
-const isLast = computed(() => Boolean(dish.value && item.value && item.value.currentStep >= dish.value.steps.length))
+const isLast = computed(() => Boolean(item.value && item.value.currentStep >= displaySteps.value.length))
 const remainingMinutes = computed(() => {
-  if (!dish.value || !item.value) return 0
+  if (!item.value) return 0
   const currentIndex = Math.max(0, (item.value.currentStep || 1) - 1)
-  return dish.value.steps.slice(currentIndex).reduce((sum, step) => sum + Math.max(0, step.minutes || 0), 0)
+  return displaySteps.value.slice(currentIndex).reduce((sum, step) => sum + Math.max(0, step.minutes || 0), 0)
 })
 const stepTimer = computed(() => (item.value ? store.getStepTimerByItem(item.value.id) : undefined))
 const timerMatchesCurrentStep = computed(() => Boolean(stepTimer.value && currentStep.value && stepTimer.value.context.stepNo === currentStep.value.stepNo))
@@ -514,6 +521,15 @@ function goPeerTimer(targetItemId?: string) {
   color: $text-main;
   font-size: 23rpx;
   font-weight: 900;
+}
+
+.fallback-step-banner {
+  margin-bottom: 18rpx;
+  padding: 20rpx 22rpx;
+  background: linear-gradient(135deg, #fffaf4 0%, #fffefb 100%);
+  color: $text-sub;
+  font-size: 23rpx;
+  line-height: 1.55;
 }
 
 .step-actions {

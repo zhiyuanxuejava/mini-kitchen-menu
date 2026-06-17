@@ -1,8 +1,13 @@
 <template>
   <AppPage class="dishes-page">
     <view class="page-head">
-      <text class="title-xl">我的<text class="accent">菜品库</text></text>
-      <image :src="icons.basket" mode="aspectFit" />
+      <view class="head-copy">
+        <text class="title-xl">{{ libraryPrefix }}<text class="accent">菜品库</text></text>
+        <text class="head-sub">{{ libraryHint }}</text>
+      </view>
+      <button class="library-toggle" hover-class="tap" @tap="toggleSource">
+        <image :src="icons.basket" mode="aspectFit" />
+      </button>
     </view>
     <view class="search-wrap">
       <view class="search-box" :class="{ active: showSuggestions }">
@@ -112,23 +117,29 @@ import DishListItem from '@/components/DishListItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { icons } from '@/data/assets'
 import { categoryLabels } from '@/data/labels'
-import type { Difficulty, Dish, DishCategory } from '@/data/types'
+import type { Difficulty, Dish, DishCategory, DishSourceType } from '@/data/types'
 import { useKitchenStore } from '@/stores/kitchen'
 
 type DifficultyFilter = Difficulty | 'all'
 type LearnedStatusFilter = 'all' | 'learned' | 'unlearned'
 type SortKey = 'default' | 'time' | 'rating'
 type SortDirection = 'asc' | 'desc'
+type DishSourceFilter = DishSourceType | 'all'
 
 const store = useKitchenStore()
 const keyword = ref('')
 const searchFocused = ref(false)
 const selectedSuggestionId = ref('')
+const activeSource = ref<DishSourceFilter>('system_sync')
 const activeCategory = ref<DishCategory | 'all'>('all')
 const activeDifficulty = ref<DifficultyFilter>('all')
 const activeLearnedStatus = ref<LearnedStatusFilter>('all')
 const sortKey = ref<SortKey>('default')
 const sortDirection = ref<SortDirection>('asc')
+const sourceOptions: Array<{ key: DishSourceFilter; label: string }> = [
+  { key: 'system_sync', label: '公共菜品' },
+  { key: 'user_created', label: '我的菜品' }
+]
 const categories = (Object.keys(categoryLabels) as Array<DishCategory | 'all'>).map((key) => ({
   key,
   label: categoryLabels[key]
@@ -159,10 +170,12 @@ const activeLearnedStatusLabel = computed(() => {
   if (activeLearnedStatus.value === 'unlearned') return '未学会'
   return '状态'
 })
+const libraryPrefix = computed(() => (activeSource.value === 'user_created' ? '我的' : '公共'))
+const libraryHint = computed(() => (activeSource.value === 'user_created' ? '查看和管理自己添加的菜品' : '浏览大家都能使用的公共菜品'))
 const selectedSuggestion = computed(() => (selectedSuggestionId.value ? store.getDish(selectedSuggestionId.value) : undefined))
 const searchSuggestions = computed(() => {
   if (!keyword.value.trim() || selectedSuggestionId.value) return []
-  return store.dishSearchCandidates(keyword.value)
+  return store.dishSearchCandidates(keyword.value, activeSource.value)
 })
 const showSuggestions = computed(() => searchFocused.value && !selectedSuggestionId.value && searchSuggestions.value.length > 0)
 const activeFilters = computed(() => {
@@ -175,17 +188,18 @@ const activeFilters = computed(() => {
 })
 const dishes = computed(() => {
   if (selectedSuggestion.value) {
+    const matchSource = (selectedSuggestion.value.sourceType || 'system_sync') === activeSource.value
     const matchDifficulty = activeDifficulty.value === 'all' || selectedSuggestion.value.difficulty === activeDifficulty.value
     const matchCategory = activeCategory.value === 'all' || selectedSuggestion.value.category === activeCategory.value
     const matchLearned =
       activeLearnedStatus.value === 'all' ||
       (activeLearnedStatus.value === 'learned' && Boolean(selectedSuggestion.value.learnedAt)) ||
       (activeLearnedStatus.value === 'unlearned' && !selectedSuggestion.value.learnedAt)
-    return matchDifficulty && matchCategory && matchLearned ? [selectedSuggestion.value] : []
+    return matchSource && matchDifficulty && matchCategory && matchLearned ? [selectedSuggestion.value] : []
   }
 
   const rows = store
-    .dishesByCategory(activeCategory.value, keyword.value, 'all')
+    .dishesByCategory(activeCategory.value, keyword.value, activeSource.value)
     .filter((dish) => activeDifficulty.value === 'all' || dish.difficulty === activeDifficulty.value)
     .filter((dish) => {
       if (activeLearnedStatus.value === 'learned') return Boolean(dish.learnedAt)
@@ -198,6 +212,14 @@ const dishes = computed(() => {
 
 watch(keyword, (value, oldValue) => {
   if (selectedSuggestionId.value && value !== selectedSuggestion.value?.name && value !== oldValue) {
+    selectedSuggestionId.value = ''
+  }
+})
+
+watch(activeSource, () => {
+  const selected = selectedSuggestion.value
+  if (!selected) return
+  if ((selected.sourceType || 'system_sync') !== activeSource.value) {
     selectedSuggestionId.value = ''
   }
 })
@@ -250,6 +272,10 @@ function clearKeyword() {
 function clearSelectedSuggestion() {
   selectedSuggestionId.value = ''
   searchFocused.value = true
+}
+
+function toggleSource() {
+  activeSource.value = activeSource.value === 'system_sync' ? 'user_created' : 'system_sync'
 }
 
 function toggleSort(key: Exclude<SortKey, 'default'>) {
@@ -324,7 +350,37 @@ async function toggleFavorite(id: string) {
   margin: 10rpx 0 24rpx;
 }
 
-.page-head image {
+.head-copy {
+  min-width: 0;
+}
+
+.head-sub {
+  display: block;
+  margin-top: 10rpx;
+  color: $text-sub;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.library-toggle,
+.page-head .library-toggle,
+.page-head uni-button.library-toggle {
+  position: relative;
+  width: 146rpx;
+  height: 116rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #fff8ef 0%, #fff2e3 100%);
+  box-shadow: 0 12rpx 24rpx rgba(255, 123, 37, 0.1);
+}
+
+.library-toggle::after,
+.page-head .library-toggle::after {
+  border: 0;
+}
+
+.library-toggle image {
   width: 146rpx;
   height: 116rpx;
   margin-top: 8rpx;
