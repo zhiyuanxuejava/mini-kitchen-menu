@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { isDefaultUserAvatar, kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
+import { ApiError, isDefaultUserAvatar, kitchenApi, normalizeUserAvatarUrl } from '@/api/kitchen'
 import { icons } from '@/data/assets'
 import { seedDishes as prototypeSeedDishes } from '@/data/prototype-seed'
 import type {
@@ -125,6 +125,7 @@ interface KitchenTimerTickerStore {
 }
 
 let kitchenTimerTicker: ReturnType<typeof setInterval> | undefined
+let loginRedirecting = false
 
 function ensureKitchenTimerTicker(store: KitchenTimerTickerStore) {
   if (kitchenTimerTicker) return
@@ -611,6 +612,27 @@ function removePersistedObject(key: string) {
   } catch {}
 }
 
+function isTokenInvalidError(error: unknown) {
+  return error instanceof ApiError && (
+    error.code === 'TOKEN_INVALID' ||
+    (error.status === 401 && error.message === 'Unauthorized')
+  )
+}
+
+function redirectToLogin(message: string) {
+  if (loginRedirecting) return
+  loginRedirecting = true
+  uni.showToast({ title: message, icon: 'none' })
+  setTimeout(() => {
+    uni.reLaunch({
+      url: '/pages/login/index',
+      complete: () => {
+        loginRedirecting = false
+      }
+    })
+  }, 300)
+}
+
 export const useKitchenStore = defineStore('kitchen', {
   state: (): KitchenState => ({
     hydrated: false,
@@ -728,6 +750,21 @@ export const useKitchenStore = defineStore('kitchen', {
       this.records = next.records
       this.ratings = next.ratings
       this.kitchenTimers = next.kitchenTimers
+    },
+    expireSession(message = '登录已过期，请重新登录') {
+      this.resetLocalState()
+      this.hydrated = true
+      this.apiError = message
+      removePersistedObject(AUTH_STORAGE_KEY)
+      removePersistedObject(CACHE_STORAGE_KEY)
+      removePersistedObject(LEGACY_STORAGE_KEY)
+      redirectToLogin(message)
+    },
+    requireSession() {
+      if (this.token && this.user) return
+      const message = '请先登录后再操作'
+      this.expireSession(message)
+      throw new Error(message)
     },
     cacheSession(token: string, user: UserProfile) {
       this.token = token
@@ -922,6 +959,10 @@ export const useKitchenStore = defineStore('kitchen', {
       try {
         return await task()
       } catch (error) {
+        if (isTokenInvalidError(error)) {
+          this.expireSession('登录已过期，请重新登录')
+          throw error
+        }
         const message = error instanceof Error ? error.message : '网络请求失败'
         this.apiError = message
         throw error
@@ -999,7 +1040,7 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
     },
     async uploadFiles(filePaths: string[]) {
-      if (!this.token) return filePaths
+      this.requireSession()
       return this.runRemote(() => kitchenApi.uploadFiles(this.token, filePaths))
     },
     async refreshRecordsAndRatings() {
@@ -1265,6 +1306,7 @@ export const useKitchenStore = defineStore('kitchen', {
       includeInHistory: boolean
     }) {
       const menuItem = input.menuItemId ? this.menu.items.find((item) => item.id === input.menuItemId) : undefined
+      this.requireSession()
       if (this.token) {
         const pendingUploads = input.photos.filter((photo) => !photo.startsWith('/static/') && !photo.startsWith('/uploads/') && !/^https?:\/\//.test(photo))
         let uploadedPhotos = pendingUploads
@@ -1308,6 +1350,7 @@ export const useKitchenStore = defineStore('kitchen', {
       return record.id
     },
     async saveRating(recordId: string, rating: Omit<Rating, 'id' | 'cookRecordId' | 'createdAt'>) {
+      this.requireSession()
       if (this.token) {
         const saved = await this.runRemote(() => kitchenApi.saveRating(this.token, recordId, rating))
         const existed = this.ratings.find((item) => item.cookRecordId === recordId)
@@ -1331,6 +1374,7 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
     },
     async createDish(input: EditableDishInput) {
+      this.requireSession()
       if (this.token) {
         const dish = await this.runRemote(() => kitchenApi.createDish(this.token, input))
         this.dishes.unshift(dish)
@@ -1387,6 +1431,7 @@ export const useKitchenStore = defineStore('kitchen', {
     async updateDish(id: string, input: EditableDishInput) {
       const existing = this.getDish(id)
       if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权编辑这道菜')
+      this.requireSession()
 
       if (this.token) {
         const dish = await this.runRemote(() => kitchenApi.updateDish(this.token, id, input))
@@ -1431,6 +1476,7 @@ export const useKitchenStore = defineStore('kitchen', {
     async deleteDish(id: string) {
       const existing = this.getDish(id)
       if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权删除这道菜')
+      this.requireSession()
 
       const removedRecordIds = new Set(this.records.filter((record) => record.dishId === id).map((record) => record.id))
 

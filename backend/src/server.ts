@@ -263,20 +263,20 @@ async function auth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization
   const token = header?.startsWith('Bearer ') ? header.slice(7) : ''
   if (!token) {
-    res.status(401).json({ message: 'Unauthorized' })
+    res.status(401).json({ message: '登录已过期，请重新登录', code: 'TOKEN_INVALID' })
     return
   }
   try {
     const payload = jwt.verify(token, jwtSecret) as { sub: string }
     const user = await prisma.user.findUnique({ where: { id: payload.sub } })
     if (!user) {
-      res.status(401).json({ message: 'Unauthorized' })
+      res.status(401).json({ message: '登录已过期，请重新登录', code: 'TOKEN_INVALID' })
       return
     }
     req.user = user
     next()
   } catch {
-    res.status(401).json({ message: 'Unauthorized' })
+    res.status(401).json({ message: '登录已过期，请重新登录', code: 'TOKEN_INVALID' })
   }
 }
 

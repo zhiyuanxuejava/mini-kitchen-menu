@@ -548,20 +548,34 @@ function collectPayload(): EditableDishInput | null {
 
 async function uploadDraftImages(payload: EditableDishInput) {
   const pending: string[] = []
-  if (payload.coverImage && isTemporaryFilePath(payload.coverImage)) pending.push(payload.coverImage)
+  const addPending = (path: string) => {
+    if (!pending.includes(path)) pending.push(path)
+  }
+
+  if (payload.coverImage && isTemporaryFilePath(payload.coverImage)) addPending(payload.coverImage)
   for (const step of payload.steps) {
-    if (step.image && isTemporaryFilePath(step.image)) pending.push(step.image)
+    if (step.image && isTemporaryFilePath(step.image)) addPending(step.image)
   }
   if (!pending.length) return payload
 
   const uploaded = await store.uploadFiles(pending)
-  let index = 0
-  const take = () => uploaded[index++] || ''
+  if (uploaded.length !== pending.length) {
+    throw new Error('图片上传结果不完整，请重新上传')
+  }
 
-  const coverImage = payload.coverImage && isTemporaryFilePath(payload.coverImage) ? take() : payload.coverImage
+  const uploadedByPath = new Map(pending.map((path, index) => [path, uploaded[index]]))
+  const uploadedUrlFor = (path: string) => {
+    const url = uploadedByPath.get(path)
+    if (!url) throw new Error('图片上传成功但未返回文件地址')
+    return url
+  }
+
+  const coverImage = payload.coverImage && isTemporaryFilePath(payload.coverImage)
+    ? uploadedUrlFor(payload.coverImage)
+    : payload.coverImage
   const steps = payload.steps.map((step) => {
     if (step.image && isTemporaryFilePath(step.image)) {
-      return { ...step, image: take() }
+      return { ...step, image: uploadedUrlFor(step.image) }
     }
     return step
   })
@@ -596,8 +610,9 @@ async function save() {
 
     const id = await store.createDish(uploadedPayload)
     uni.redirectTo({ url: `/pages/dish-detail/index?id=${id}` })
-  } catch {
-    uni.showToast({ title: store.apiError || '保存失败', icon: 'none' })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '保存失败'
+    uni.showToast({ title: store.apiError || message, icon: 'none' })
   }
 }
 
