@@ -2,10 +2,12 @@
 import { onLaunch } from '@dcloudio/uni-app'
 import { useKitchenStore } from '@/stores/kitchen'
 import { setupWechatPrivacy } from '@/utils/wechat-privacy'
+import { startVersionCheck } from '@/utils/version-check'
 
 onLaunch(() => {
   useKitchenStore().hydrate()
   setupWechatPrivacy()
+  startVersionCheck()
 })
 </script>
 
