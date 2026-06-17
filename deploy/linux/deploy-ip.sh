@@ -265,6 +265,18 @@ server {
         proxy_pass http://127.0.0.1:$BACKEND_PORT/;
     }
 
+    location = /version.json {
+        add_header Cache-Control "no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
+        try_files \$uri =404;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        expires 0;
+    }
+
     location /assets/ {
         try_files \$uri =404;
         expires 7d;
@@ -302,6 +314,18 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_pass http://127.0.0.1:$BACKEND_PORT/;
+    }
+
+    location = /version.json {
+        add_header Cache-Control "no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
+        try_files \$uri =404;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        expires 0;
     }
 
     location /assets/ {
@@ -363,6 +387,40 @@ verify_media_access() {
   printf 'ok\n' >"$APP_DIR/backend/uploads/$probe_file"
   wait_for_url "http://127.0.0.1:$H5_PORT/api/uploads/$probe_file" "Upload media route"
   rm -f "$APP_DIR/backend/uploads/$probe_file"
+}
+
+verify_h5_auto_update() {
+  echo "Verifying H5 auto-update plumbing..."
+
+  wait_for_url "http://127.0.0.1:$H5_PORT/version.json" "H5 version.json"
+
+  local body
+  body="$(curl --silent --fail "http://127.0.0.1:$H5_PORT/version.json")" || {
+    echo "ERROR: cannot fetch /version.json"
+    return 1
+  }
+
+  if ! printf '%s' "$body" | grep -qE '"version"[[:space:]]*:[[:space:]]*"[^"]+"'; then
+    echo "ERROR: /version.json missing a version field. body=$body"
+    return 1
+  fi
+
+  local version_headers index_headers
+  version_headers="$(curl --silent --head "http://127.0.0.1:$H5_PORT/version.json")"
+  if ! printf '%s' "$version_headers" | grep -qiE 'Cache-Control:.*no-store'; then
+    echo "ERROR: /version.json missing 'Cache-Control: no-store'."
+    echo "$version_headers"
+    return 1
+  fi
+
+  index_headers="$(curl --silent --head "http://127.0.0.1:$H5_PORT/index.html")"
+  if ! printf '%s' "$index_headers" | grep -qiE 'Cache-Control:.*no-cache'; then
+    echo "ERROR: /index.html missing 'Cache-Control: no-cache'."
+    echo "$index_headers"
+    return 1
+  fi
+
+  echo "H5 auto-update plumbing OK. version=$(printf '%s' "$body" | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
 }
 
 seed_admin_user() {
@@ -461,5 +519,6 @@ install_systemd_service
 install_nginx_config
 verify_services
 verify_media_access
+verify_h5_auto_update
 seed_admin_user
 print_summary

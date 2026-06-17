@@ -61,7 +61,7 @@ foreach ($file in $rootFiles) {
 
 Invoke-Robocopy -Source (Join-Path $repoRoot 'frontend') -Destination (Join-Path $stageDir 'frontend') `
   -ExcludeDirs @('node_modules', 'dist', '.vite', '.uni', 'unpackage') `
-  -ExcludeFiles @('.env.local', 'project.config.json', 'project.private.config.json', 'manifest.json')
+  -ExcludeFiles @('.env.local', 'project.config.json', 'project.private.config.json', 'manifest.json', '.h5-version.json')
 
 Invoke-Robocopy -Source (Join-Path $repoRoot 'backend') -Destination (Join-Path $stageDir 'backend') `
   -ExcludeDirs @('node_modules', 'dist', 'uploads') `
