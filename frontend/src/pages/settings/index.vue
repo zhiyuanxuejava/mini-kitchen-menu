@@ -146,10 +146,9 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">清除缓存并重新登录</text>
-          <text class="setting-sub">适合手机版一直拿到旧页面、图片上传后不回显时使用</text>
         </view>
         <view class="setting-meta">
-          <text class="setting-value danger-text">强制刷新</text>
+          <text class="setting-value danger-text">重新登录</text>
           <text class="setting-arrow">›</text>
         </view>
       </button>
@@ -164,22 +163,14 @@
             <image :src="icons.upload" mode="aspectFit" />
           </view>
           <view class="confirm-copy">
-            <text class="confirm-title">清除缓存并重新登录</text>
-            <text class="confirm-sub">会强制拉取最新页面资源，适合安卓浏览器缓存顽固不更新时使用。</text>
+            <text class="confirm-title">是否要清除缓存并重新登录？</text>
           </view>
-        </view>
-
-        <view class="confirm-note">
-          <text class="confirm-note-title">会发生什么</text>
-          <text class="confirm-note-item">1. 清掉本地页面缓存和业务缓存</text>
-          <text class="confirm-note-item">2. 退出当前账号</text>
-          <text class="confirm-note-item">3. 重新打开登录页并强制请求最新版</text>
         </view>
 
         <view class="confirm-actions">
           <button class="ghost-btn confirm-btn" hover-class="tap" @tap="closeReloginDialog">取消</button>
           <button class="primary-btn confirm-btn" hover-class="tap" :disabled="clearingCache" @tap="confirmClearCacheAndRelogin">
-            {{ clearingCache ? '处理中...' : '确认执行' }}
+            {{ clearingCache ? '处理中...' : '确认' }}
           </button>
         </view>
       </view>
@@ -479,7 +470,6 @@ function logout() {
 }
 
 .setting-title,
-.setting-sub,
 .setting-value {
   display: block;
 }
@@ -488,13 +478,6 @@ function logout() {
   color: $text-main;
   font-size: 28rpx;
   font-weight: 900;
-}
-
-.setting-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 22rpx;
-  line-height: 1.5;
 }
 
 .setting-meta {
@@ -601,9 +584,7 @@ function logout() {
 }
 
 .confirm-title,
-.confirm-sub,
-.confirm-note-title,
-.confirm-note-item {
+.confirm-sub {
   display: block;
 }
 
@@ -614,43 +595,13 @@ function logout() {
   line-height: 1.35;
 }
 
-.confirm-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 23rpx;
-  line-height: 1.55;
-}
-
-.confirm-note {
-  position: relative;
-  z-index: 1;
-  margin-top: 22rpx;
-  padding: 20rpx 18rpx;
-  border: 1rpx solid rgba(255, 202, 169, 0.92);
-  border-radius: 22rpx;
-  background: rgba(255, 252, 247, 0.94);
-}
-
-.confirm-note-title {
-  color: $primary;
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
-.confirm-note-item {
-  margin-top: 10rpx;
-  color: $text-sub;
-  font-size: 22rpx;
-  line-height: 1.55;
-}
-
 .confirm-actions {
   position: relative;
   z-index: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16rpx;
-  margin-top: 24rpx;
+  margin-top: 22rpx;
 }
 
 .confirm-btn {
