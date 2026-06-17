@@ -16,7 +16,7 @@
         <text class="comment line-clamp-2">{{ item.comment || '暂无文字评价' }}</text>
       </view>
     </view>
-    <EmptyState v-if="!ratings.length" title="暂无评分记录" desc="提交成品评分后会在这里看到五维明细。" />
+    <EmptyState v-if="!ratings.length" title="暂无评分记录" />
   </AppPage>
 </template>
 

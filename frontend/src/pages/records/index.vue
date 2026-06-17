@@ -16,7 +16,7 @@
         <text class="note line-clamp-2">{{ record.note }}</text>
       </view>
     </view>
-    <EmptyState v-if="!records.length" title="还没有历史记录" desc="完成一道菜并上传成品后，会在这里沉淀复盘。" />
+    <EmptyState v-if="!records.length" title="还没有历史记录" />
   </AppPage>
 </template>
 

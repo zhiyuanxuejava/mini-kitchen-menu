@@ -35,7 +35,9 @@
         <text class="detail-actions-sub">收藏、学习或直接加入今天的菜单</text>
       </view>
 
-      <button class="detail-primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">＋ 加入点菜单</button>
+      <button class="detail-primary-btn" hover-class="tap" @tap="store.addToMenu(dish.id)">
+        <text class="detail-primary-label">＋ 加入点菜单</text>
+      </button>
 
       <view class="detail-secondary-grid">
         <button
@@ -44,16 +46,18 @@
           hover-class="tap"
           @tap="toggleLearned"
         >
-          {{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}
+          <text class="detail-secondary-label">{{ dish.learnedAt ? '✓ 我已学会' : '○ 未学会' }}</text>
         </button>
         <button
           :class="['detail-secondary-btn', dish.isFavorite ? 'active-warm' : '']"
           hover-class="tap"
           @tap="toggleFavorite"
         >
-          {{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}
+          <text class="detail-secondary-label">{{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}</text>
         </button>
-        <button v-if="canEdit" class="detail-secondary-btn" hover-class="tap" @tap="editDish">✎ 编辑菜品</button>
+        <button v-if="canEdit" class="detail-secondary-btn" hover-class="tap" @tap="editDish">
+          <text class="detail-secondary-label">✎ 编辑菜品</text>
+        </button>
         <view v-if="!canEdit && canToggleLearned" class="detail-secondary-placeholder" />
       </view>
     </view>
@@ -324,16 +328,29 @@ function formatLearnedTime(value?: string) {
 .detail-actions uni-button.detail-primary-btn {
   width: 100%;
   height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0;
+  padding: 0 28rpx;
   border-radius: 28rpx;
   background: linear-gradient(135deg, $primary-2 0%, $primary 100%);
   color: #fff;
   font-size: 32rpx;
   font-weight: 900;
-  letter-spacing: 1rpx;
+  line-height: 1.2;
+  text-align: center;
   box-shadow:
     0 18rpx 34rpx rgba(255, 123, 37, 0.18),
     inset 0 1rpx 0 rgba(255, 255, 255, 0.18);
+}
+
+.detail-primary-label,
+.detail-secondary-label {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .detail-primary-btn::after,
@@ -358,14 +375,15 @@ function formatLearnedTime(value?: string) {
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0 20rpx;
+  padding: 0 24rpx;
   border-radius: 26rpx;
   border: 1rpx solid rgba(255, 189, 145, 0.28);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 245, 0.96) 100%);
   color: $primary;
   font-size: 27rpx;
   font-weight: 800;
-  letter-spacing: 0.5rpx;
+  line-height: 1.2;
+  text-align: center;
   box-shadow:
     inset 0 0 0 1rpx rgba(255, 247, 240, 0.92),
     0 8rpx 18rpx rgba(255, 163, 98, 0.06);

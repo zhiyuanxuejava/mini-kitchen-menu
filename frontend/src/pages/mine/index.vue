@@ -74,7 +74,6 @@
       <image :src="icons.history" mode="aspectFit" />
       <view>
         <text>还没有最近成品</text>
-        <small>完成一次做菜后会显示在这里</small>
       </view>
       <text class="arrow">›</text>
     </view>
@@ -449,13 +448,6 @@ function openSettings() {
   color: $text-main;
   font-size: 28rpx;
   font-weight: 900;
-}
-
-.recent-empty small {
-  display: block;
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 23rpx;
 }
 
 .arrow {

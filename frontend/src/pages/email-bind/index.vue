@@ -1,6 +1,6 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar title="绑定邮箱" subtitle="给微信账号补充邮箱登录方式" back />
+    <AppNavbar title="绑定邮箱" back />
 
     <view class="hero card">
       <view class="hero-copy">
@@ -9,7 +9,6 @@
         <text class="hero-sub">{{ bindHint }}</text>
         <view class="hero-tags">
           <text class="pill">{{ modeLabel }}</text>
-          <text class="pill green">不会影响微信登录</text>
         </view>
       </view>
       <UserAvatar class="hero-avatar" :src="store.user?.avatarUrl || icons.avatar" />
@@ -39,11 +38,6 @@
         <text class="label">确认密码</text>
         <input v-model="confirmPassword" password maxlength="32" placeholder="请再次输入密码" />
       </view>
-    </view>
-
-    <view class="helper card">
-      <text class="helper-title">{{ mode === 'existing' ? '合并说明' : '创建说明' }}</text>
-      <text class="helper-copy">{{ helperCopy }}</text>
     </view>
 
     <view v-if="mode === 'existing'" class="warning card">
@@ -97,11 +91,6 @@ onShow(() => {
 const displayName = computed(() => store.user?.nickname || '微信用户')
 const bindHint = computed(() => (store.user?.email ? store.user.email : '绑定后可同时使用邮箱密码和微信登录'))
 const modeLabel = computed(() => (mode.value === 'existing' ? '已有邮箱合并' : '新增邮箱登录'))
-const helperCopy = computed(() =>
-  mode.value === 'existing'
-    ? '输入已经注册过的邮箱和原密码，系统会把当前微信账号的数据合并到该邮箱账号下。微信登录方式会继续保留。'
-    : '输入一个未注册的新邮箱，并设置后续登录密码。绑定完成后，这个微信账号可以同时用邮箱密码和微信登录。'
-)
 
 async function submit() {
   const nextEmail = email.value.trim()
@@ -201,8 +190,7 @@ async function submit() {
 }
 
 .mode-panel,
-.form,
-.helper {
+.form {
   margin-top: 22rpx;
 }
 
@@ -253,8 +241,7 @@ async function submit() {
   line-height: 1.5;
 }
 
-.form,
-.helper {
+.form {
   padding: 0 24rpx;
 }
 
@@ -281,29 +268,6 @@ async function submit() {
   height: 64rpx;
   color: $text-sub;
   font-size: 26rpx;
-}
-
-.helper {
-  padding-top: 24rpx;
-  padding-bottom: 24rpx;
-}
-
-.helper-title,
-.helper-copy {
-  display: block;
-}
-
-.helper-title {
-  color: $text-main;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.helper-copy {
-  margin-top: 12rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 .warning {

@@ -1,11 +1,10 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar title="我创建的菜品" subtitle="只管理自己录入的菜谱和备注" back />
+    <AppNavbar title="我创建的菜品" back />
 
     <view class="hero card">
       <view class="hero-copy">
         <text class="hero-title">我的菜品库</text>
-        <text class="hero-sub">这里集中管理你自己创建的菜品，支持查看、编辑、删除和继续补充备注。</text>
       </view>
       <view class="hero-stat">
         <text class="hero-stat-label">当前数量</text>
@@ -24,7 +23,6 @@
     <view class="toolbar">
       <view class="toolbar-copy">
         <text class="toolbar-title">我的管理区</text>
-        <text class="toolbar-sub">只会展示你本人创建的菜品</text>
       </view>
       <button class="primary-btn add-btn" hover-class="tap" @tap="createDish">＋ 新增菜品</button>
     </view>
@@ -66,11 +64,7 @@
       </TimelineGroup>
     </view>
 
-    <EmptyState
-      v-else
-      title="时间线还是空的"
-      desc="新增一道自己的拿手菜后，会按时间出现在这里，可以继续编辑、补备注。"
-    />
+    <EmptyState v-else title="还没有我的菜品" />
   </AppPage>
 </template>
 
@@ -166,7 +160,6 @@ function removeDish(id: string) {
 }
 
 .hero-title,
-.hero-sub,
 .hero-stat-label,
 .hero-stat-value {
   display: block;
@@ -176,13 +169,6 @@ function removeDish(id: string) {
   color: $text-main;
   font-size: 38rpx;
   font-weight: 900;
-}
-
-.hero-sub {
-  margin-top: 12rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 
 .hero-stat {
@@ -250,8 +236,7 @@ function removeDish(id: string) {
   min-width: 0;
 }
 
-.toolbar-title,
-.toolbar-sub {
+.toolbar-title {
   display: block;
 }
 
@@ -259,12 +244,6 @@ function removeDish(id: string) {
   color: $text-main;
   font-size: 30rpx;
   font-weight: 900;
-}
-
-.toolbar-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 22rpx;
 }
 
 .add-btn {

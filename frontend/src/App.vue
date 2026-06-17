@@ -36,9 +36,10 @@ uni-button {
   padding: 0;
   border: 0;
   background: transparent;
-  line-height: 1;
+  line-height: normal;
   min-width: 0;
   white-space: nowrap;
+  text-align: center;
 }
 
 button::after,

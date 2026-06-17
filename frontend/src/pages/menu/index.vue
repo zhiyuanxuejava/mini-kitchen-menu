@@ -59,7 +59,7 @@
       </view>
     </view>
 
-    <EmptyState v-if="!store.menu.items.length" title="点菜单还是空的" desc="先去菜品库加入今晚想吃的菜。" />
+    <EmptyState v-if="!store.menu.items.length" title="点菜单还是空的" />
 
     <view class="menu-action-spacer" />
 

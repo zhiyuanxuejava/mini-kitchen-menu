@@ -1,6 +1,6 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar title="设置" subtitle="账号、数据与提醒都在这里" back />
+    <AppNavbar title="设置" back />
 
     <view class="hero card">
       <view class="hero-copy">
@@ -9,7 +9,6 @@
         <text class="hero-sub">{{ displayEmail }}</text>
         <view class="hero-tags">
           <text class="pill">{{ roleLabel }}</text>
-          <text class="pill green">真实数据已接入</text>
         </view>
       </view>
       <button class="hero-avatar" hover-class="tap" @tap="goEditProfile">
@@ -22,29 +21,24 @@
       <view class="summary-box card">
         <text class="summary-label">我的菜品</text>
         <text class="summary-value">{{ store.myDishCount }} 道</text>
-        <text class="summary-note">展示当前账号可查看的真实菜品数量</text>
       </view>
       <view class="summary-box card">
         <text class="summary-label">今日菜单</text>
         <text class="summary-value">{{ store.menuDishCount }} 道</text>
-        <text class="summary-note">今晚已安排 {{ store.menu.servings }} 人份</text>
       </view>
       <view class="summary-box card accent">
         <text class="summary-label">做菜记录</text>
         <text class="summary-value">{{ store.myRecordCount }} 次</text>
-        <text class="summary-note">历史记录来自后端真实记录</text>
       </view>
       <view class="summary-box card accent">
         <text class="summary-label">平均评分</text>
         <text class="summary-value">{{ averageRatingText }}</text>
-        <text class="summary-note">按我的所有评分记录实时计算</text>
       </view>
     </view>
 
     <view class="section card">
       <view class="section-head">
         <text class="section-title">账号与资料</text>
-        <text class="section-sub">这里不再只是展示，支持真正修改昵称和头像。</text>
       </view>
       <button class="setting-row" hover-class="tap" @tap="goEditProfile">
         <view class="setting-icon">
@@ -52,7 +46,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">个人资料</text>
-          <text class="setting-desc">修改昵称、头像和个人展示信息</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ displayName }}</text>
@@ -65,7 +58,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">绑定邮箱</text>
-          <text class="setting-desc">为当前微信账号补充邮箱密码登录方式</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">去绑定</text>
@@ -78,7 +70,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">登录方式</text>
-          <text class="setting-desc">{{ loginMethodDesc }}</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ loginMethodValue }}</text>
@@ -90,7 +81,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">账号角色</text>
-          <text class="setting-desc">决定是否可以进入后台与编辑更多内容</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ roleLabel }}</text>
@@ -102,7 +92,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">隐私指引</text>
-          <text class="setting-desc">查看微信资料采集说明，并确认当前授权状态</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ privacyGuideText }}</text>
@@ -113,8 +102,7 @@
 
     <view class="section card">
       <view class="section-head">
-        <text class="section-title">真实功能</text>
-        <text class="section-sub">把原来占位说明替换成真正可用的入口。</text>
+        <text class="section-title">数据与记录</text>
       </view>
       <button class="setting-row" hover-class="tap" @tap="refreshAll">
         <view class="setting-icon warm">
@@ -122,10 +110,9 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">刷新数据</text>
-          <text class="setting-desc">重新拉取菜品、做菜记录、评分和统计</text>
         </view>
         <view class="setting-meta">
-          <text class="setting-value">{{ refreshing ? '刷新中' : '立即执行' }}</text>
+          <text class="setting-value">{{ refreshing ? '刷新中' : '立即刷新' }}</text>
           <text class="setting-arrow">›</text>
         </view>
       </button>
@@ -135,7 +122,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">历史记录</text>
-          <text class="setting-desc">查看已沉淀的做菜成品与复盘记录</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ store.myRecordCount }} 条</text>
@@ -148,7 +134,6 @@
         </view>
         <view class="setting-copy">
           <text class="setting-title">评分记录</text>
-          <text class="setting-desc">查看味道、外观、火候等维度评分</text>
         </view>
         <view class="setting-meta">
           <text class="setting-value">{{ store.ratings.length }} 条</text>
@@ -200,15 +185,9 @@ const loginMethodValue = computed(() => {
   if (store.user?.wechatOpenId) return '仅微信'
   return '未识别'
 })
-const loginMethodDesc = computed(() => {
-  if (store.user?.email && store.user?.wechatOpenId) return '当前账号已支持两种登录方式'
-  if (store.user?.email) return '当前通过邮箱密码登录并同步数据'
-  if (store.user?.wechatOpenId) return '当前通过微信登录，建议补充邮箱密码登录'
-  return '当前用于同步菜谱与记录的账号'
-})
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const averageRatingText = computed(() => `${store.averageRating.toFixed(1)} 分`)
-const privacyGuideText = computed(() => (wechatPrivacyState.needAuthorization ? '待确认' : '已同步'))
+const privacyGuideText = computed(() => (wechatPrivacyState.needAuthorization ? '待确认' : '已开启'))
 
 async function refreshAll(showToast = true) {
   if (!store.token || refreshing.value) return
@@ -341,6 +320,10 @@ function logout() {
 }
 
 .summary-box {
+  min-height: 156rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: 24rpx;
   background: linear-gradient(180deg, #fffdfa 0%, #fff9f2 100%);
 }
@@ -350,8 +333,7 @@ function logout() {
 }
 
 .summary-label,
-.summary-value,
-.summary-note {
+.summary-value {
   display: block;
 }
 
@@ -367,13 +349,6 @@ function logout() {
   font-weight: 900;
 }
 
-.summary-note {
-  margin-top: 8rpx;
-  color: $primary;
-  font-size: 22rpx;
-  line-height: 1.45;
-}
-
 .section {
   margin-top: 22rpx;
   overflow: hidden;
@@ -381,35 +356,24 @@ function logout() {
 }
 
 .section-head {
-  padding: 26rpx 6rpx 12rpx;
-}
-
-.section-title,
-.section-sub {
-  display: block;
+  padding: 26rpx 6rpx 10rpx;
 }
 
 .section-title {
+  display: block;
   color: $text-main;
   font-size: 32rpx;
   font-weight: 900;
 }
 
-.section-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 23rpx;
-  line-height: 1.45;
-}
-
 .setting-row {
-  min-height: 118rpx;
+  min-height: 104rpx;
   display: grid;
   grid-template-columns: 72rpx minmax(0, 1fr) auto;
   gap: 18rpx;
   align-items: center;
   margin: 0;
-  padding: 20rpx 0;
+  padding: 18rpx 0;
   border: 0;
   border-bottom: 1rpx solid #f2e7de;
   border-radius: 0;
@@ -449,28 +413,20 @@ function logout() {
 }
 
 .setting-title,
-.setting-desc,
 .setting-value {
   display: block;
 }
 
 .setting-title {
   color: $text-main;
-  font-size: 29rpx;
+  font-size: 28rpx;
   font-weight: 900;
-}
-
-.setting-desc {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 22rpx;
-  line-height: 1.45;
 }
 
 .setting-meta {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 10rpx;
   padding-left: 12rpx;
 }
 
@@ -493,12 +449,18 @@ function logout() {
 
 .logout-btn {
   height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 24rpx;
+  padding: 0 24rpx;
   border-radius: 26rpx;
   background: linear-gradient(135deg, #ffe9dc 0%, #fff2e9 100%);
   color: $primary;
   font-size: 30rpx;
   font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
   box-shadow: 0 12rpx 24rpx rgba(255, 123, 37, 0.12);
 }
 </style>

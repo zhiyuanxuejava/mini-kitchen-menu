@@ -20,8 +20,12 @@
         <view class="cover-panel">
           <image class="cover-image" :src="coverPreview" mode="aspectFill" />
           <view class="cover-actions">
-            <button class="ghost-btn" hover-class="tap" @tap="chooseCoverImage">更换封面</button>
-            <button v-if="hasCustomCover" class="ghost-btn subtle-btn" hover-class="tap" @tap="resetCoverImage">恢复默认</button>
+            <button class="ghost-btn cover-action-btn" hover-class="tap" @tap="chooseCoverImage">
+              <text>更换封面</text>
+            </button>
+            <button v-if="hasCustomCover" class="ghost-btn subtle-btn cover-action-btn" hover-class="tap" @tap="resetCoverImage">
+              <text>恢复默认</text>
+            </button>
           </view>
         </view>
 
@@ -36,10 +40,10 @@
             <button
               v-for="item in categories"
               :key="item.key"
-              :class="{ active: form.category === item.key }"
+              :class="['category-chip', { active: form.category === item.key }]"
               @tap="form.category = item.key"
             >
-              {{ item.label }}
+              <text>{{ item.label }}</text>
             </button>
           </view>
         </view>
@@ -76,10 +80,7 @@
         </view>
 
         <view class="field field-stack">
-          <view class="field-copy">
-            <text>预计耗时</text>
-            <text class="field-mini">可手动调整，不填步骤时按这里展示</text>
-          </view>
+          <text>预计耗时</text>
           <view class="minutes-wrap">
             <input v-model.number="form.estimatedMinutes" type="number" @blur="normalizeEstimatedMinutes" />
             <text>分钟</text>
@@ -93,7 +94,9 @@
             <text class="section-title">食材清单</text>
             <text class="section-sub">支持主料、辅料、调料分组，详情页会按分组展示。</text>
           </view>
-          <button class="ghost-btn add-inline-btn" hover-class="tap" @tap="addIngredient">＋ 添加食材</button>
+          <button class="ghost-btn add-inline-btn" hover-class="tap" @tap="addIngredient">
+            <text>＋ 添加食材</text>
+          </button>
         </view>
 
         <view class="ingredient-tabs">
@@ -117,7 +120,9 @@
                   <view class="picker mini-picker">{{ groupLabels[ingredient.groupType] }} ›</view>
                 </picker>
               </view>
-              <button class="remove-btn" hover-class="tap" @tap="removeIngredient(ingredient.id)">删除</button>
+              <button class="remove-btn" hover-class="tap" @tap="removeIngredient(ingredient.id)">
+                <text>删除</text>
+              </button>
             </view>
             <view class="ingredient-grid">
               <view class="field compact">
@@ -141,14 +146,18 @@
         <view class="section-head with-action">
           <view>
             <text class="section-title">做法步骤</text>
-            <text class="section-sub">不填也可以，默认会按菜品描述生成第 1 步。</text>
+            <text class="section-sub">可选，不填则使用菜品描述。</text>
           </view>
-          <button class="ghost-btn add-inline-btn" hover-class="tap" @tap="addStep">＋ 添加步骤</button>
+          <button class="ghost-btn add-inline-btn" hover-class="tap" @tap="addStep">
+            <text>＋ 添加步骤</text>
+          </button>
         </view>
 
         <view v-if="form.steps.length" class="timeline-note">
           <text>{{ stepSummaryText }}</text>
-          <button class="ghost-btn sync-btn" hover-class="tap" @tap="syncEstimatedMinutesFromSteps">同步到预计耗时</button>
+          <button class="ghost-btn sync-btn" hover-class="tap" @tap="syncEstimatedMinutesFromSteps">
+            <text>同步到预计耗时</text>
+          </button>
         </view>
 
         <view v-if="form.steps.length" class="step-list">
@@ -159,17 +168,27 @@
                 <text class="step-label">步骤 {{ index + 1 }}</text>
               </view>
               <view class="step-order-actions">
-                <button class="ghost-btn square-btn" hover-class="tap" :disabled="index === 0" @tap="moveStep(index, -1)">↑</button>
-                <button class="ghost-btn square-btn" hover-class="tap" :disabled="index === form.steps.length - 1" @tap="moveStep(index, 1)">↓</button>
-                <button class="remove-btn" hover-class="tap" @tap="removeStep(step.id)">删除</button>
+                <button class="ghost-btn square-btn" hover-class="tap" :disabled="index === 0" @tap="moveStep(index, -1)">
+                  <text>↑</text>
+                </button>
+                <button class="ghost-btn square-btn" hover-class="tap" :disabled="index === form.steps.length - 1" @tap="moveStep(index, 1)">
+                  <text>↓</text>
+                </button>
+                <button class="remove-btn" hover-class="tap" @tap="removeStep(step.id)">
+                  <text>删除</text>
+                </button>
               </view>
             </view>
 
             <view class="step-media">
               <image class="step-preview" :src="step.image || coverPreview" mode="aspectFill" />
               <view class="step-media-actions">
-                <button class="ghost-btn" hover-class="tap" @tap="chooseStepImage(step.id)">上传步骤图</button>
-                <button v-if="step.image" class="ghost-btn subtle-btn" hover-class="tap" @tap="clearStepImage(step.id)">清空</button>
+                <button class="ghost-btn media-action-btn" hover-class="tap" @tap="chooseStepImage(step.id)">
+                  <text>上传步骤图</text>
+                </button>
+                <button v-if="step.image" class="ghost-btn subtle-btn media-action-btn" hover-class="tap" @tap="clearStepImage(step.id)">
+                  <text>清空</text>
+                </button>
               </view>
             </view>
 
@@ -203,14 +222,18 @@
         </view>
 
         <view v-else class="empty-box empty-steps-box">
-          <text>当前未填写步骤，将使用菜品描述作为默认第 1 步。</text>
+          <text>未填写步骤时，将使用菜品描述。</text>
         </view>
       </view>
     </view>
 
     <view class="actions">
-      <button v-if="editing && canDelete" class="ghost-btn delete-btn" @tap="removeDish">删除菜品</button>
-      <button class="primary-btn save" @tap="save">{{ store.loading ? '保存中...' : '保存菜品' }}</button>
+      <button v-if="editing && canDelete" class="ghost-btn delete-btn" @tap="removeDish">
+        <text>删除菜品</text>
+      </button>
+      <button class="primary-btn save" @tap="save">
+        <text>{{ store.loading ? '保存中...' : '保存菜品' }}</text>
+      </button>
     </view>
   </AppPage>
 </template>
@@ -619,8 +642,7 @@ function removeDish() {
 .editor-banner-title,
 .editor-banner-sub,
 .section-title,
-.section-sub,
-.field-mini {
+.section-sub {
   display: block;
 }
 
@@ -701,6 +723,27 @@ function removeDish() {
   margin-top: 18rpx;
 }
 
+.cover-action-btn {
+  padding: 0 22rpx;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.cover-action-btn text,
+.category-chip text,
+.add-inline-btn text,
+.sync-btn text,
+.remove-btn text,
+.square-btn text,
+.media-action-btn text,
+.save text,
+.delete-btn text {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .subtle-btn {
   background: #fffaf6;
 }
@@ -725,18 +768,7 @@ function removeDish() {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 214rpx;
   gap: 18rpx;
-  align-items: end;
-}
-
-.field-copy {
-  min-width: 0;
-}
-
-.field-mini {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 21rpx;
-  line-height: 1.5;
+  align-items: center;
 }
 
 .field-head {
@@ -781,18 +813,24 @@ textarea {
   gap: 14rpx;
 }
 
-.chips button,
+.category-chip,
 .ingredient-tab,
 .preset-pill {
   height: 62rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16rpx;
   border: 1rpx solid $border;
   border-radius: 999rpx;
   color: $text-sub;
   font-size: 25rpx;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
 }
 
-.chips button.active,
+.category-chip.active,
 .ingredient-tab.active {
   border-color: $primary;
   color: #fff;
@@ -838,6 +876,7 @@ textarea {
 .add-inline-btn {
   min-width: 174rpx;
   height: 68rpx;
+  padding: 0 18rpx;
   border-radius: 20rpx;
   font-size: 24rpx;
 }
@@ -899,11 +938,17 @@ textarea {
 .remove-btn {
   min-width: 98rpx;
   height: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18rpx;
   border-radius: 999rpx;
   background: #fff3ef;
   color: #d34b2f;
   font-size: 22rpx;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .ingredient-grid {
@@ -947,6 +992,7 @@ textarea {
 .sync-btn {
   min-width: 160rpx;
   height: 58rpx;
+  padding: 0 18rpx;
   border-radius: 18rpx;
   font-size: 22rpx;
 }
@@ -982,6 +1028,11 @@ textarea {
   height: 58rpx;
   padding: 0;
   border-radius: 18rpx;
+}
+
+.media-action-btn {
+  padding: 0 20rpx;
+  text-align: center;
 }
 
 .step-media {

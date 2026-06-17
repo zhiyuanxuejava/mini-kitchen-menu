@@ -1,6 +1,6 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar :title="isOnboarding ? '完善微信资料' : '个人资料'" :subtitle="navSubtitle" :back="!isOnboarding" />
+    <AppNavbar :title="isOnboarding ? '完善微信资料' : '个人资料'" :subtitle="navSubtitle || undefined" :back="!isOnboarding" />
 
     <view class="hero card">
       <button
@@ -22,7 +22,6 @@
         <text class="hero-sub">{{ accountText }}</text>
         <view class="hero-tags">
           <text class="pill">{{ roleLabel }}</text>
-          <text class="pill green">资料实时同步</text>
           <text v-if="pendingUpload" class="pill amber">待上传</text>
         </view>
       </view>
@@ -41,11 +40,6 @@
         <text class="label">账号角色</text>
         <text class="static-value">{{ roleLabel }}</text>
       </view>
-    </view>
-
-    <view class="helper card">
-      <text class="helper-title">修改后影响</text>
-      <text class="helper-copy">{{ helperCopy }}</text>
     </view>
 
     <button class="primary-btn submit" hover-class="tap" @tap="save">
@@ -90,13 +84,8 @@ onShow(() => {
 const roleLabel = computed(() => (store.user?.role === 'admin' ? '管理员账号' : '普通账号'))
 const pendingUpload = computed(() => isTemporaryFilePath(avatarPreview.value))
 const needsAvatarSelection = computed(() => isDefaultUserAvatar(avatarPreview.value))
-const navSubtitle = computed(() => (isOnboarding.value ? '首次登录需要补全昵称和头像' : '修改后会同步到“我的”和设置页'))
+const navSubtitle = computed(() => (isOnboarding.value ? '补全昵称和头像' : ''))
 const accountText = computed(() => store.user?.email || '微信登录账号')
-const helperCopy = computed(() =>
-  isOnboarding.value
-    ? '请先补全微信昵称和头像，再进入首页。保存后会同步写回后端用户信息。'
-    : '“我的”页头像、昵称，以及设置页账号资料区域会立刻更新，并写回后端用户信息。'
-)
 
 function chooseAvatar() {
   uni.chooseImage({
@@ -253,8 +242,7 @@ async function save() {
   color: #b96a00;
 }
 
-.form,
-.helper {
+.form {
   margin-top: 22rpx;
   padding: 0 24rpx;
 }
@@ -290,29 +278,6 @@ async function save() {
 
 .field input {
   height: 64rpx;
-}
-
-.helper {
-  padding-top: 24rpx;
-  padding-bottom: 24rpx;
-}
-
-.helper-title,
-.helper-copy {
-  display: block;
-}
-
-.helper-title {
-  color: $text-main;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.helper-copy {
-  margin-top: 12rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.55;
 }
 
 .submit {

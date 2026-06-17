@@ -1,11 +1,10 @@
 <template>
   <AppPage>
-    <AppNavbar title="我已学会" subtitle="按时间线回看自己掌握的菜品" back />
+    <AppNavbar title="我已学会" back />
 
     <view class="summary card">
       <view>
         <text class="summary-title">已掌握 {{ entries.length }} 道菜</text>
-        <text class="summary-sub">支持按关键词、分类、难度筛选学会记录</text>
       </view>
       <text class="summary-mark">时间线</text>
     </view>
@@ -67,7 +66,7 @@
       </TimelineGroup>
     </view>
 
-    <EmptyState v-else title="时间线还是空的" desc="做完一道菜后把它加入“我已学会”，这里会按时间沉淀下来。" />
+    <EmptyState v-else title="还没有学会记录" />
 
     <BottomTabbar active="mine" />
   </AppPage>
@@ -162,8 +161,7 @@ function viewDish(id: string) {
   background: linear-gradient(135deg, #fffef8 0%, #f5fbef 100%);
 }
 
-.summary-title,
-.summary-sub {
+.summary-title {
   display: block;
 }
 
@@ -171,12 +169,6 @@ function viewDish(id: string) {
   color: $text-main;
   font-size: 30rpx;
   font-weight: 900;
-}
-
-.summary-sub {
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 23rpx;
 }
 
 .summary-mark {

@@ -50,13 +50,7 @@
         :dish="item.dish"
         @action="handleAction"
       />
-      <EmptyState v-if="!visibleItems.length" title="当前状态暂无菜品" desc="切换其他状态，或先提交今日点菜单。" />
-    </view>
-
-    <view class="tipbar">
-      <text>💡 小贴士：</text>
-      <text>按计划逐步完成，美味更有成就感哦～</text>
-      <text class="arrow">›</text>
+      <EmptyState v-if="!visibleItems.length" title="当前状态暂无菜品" />
     </view>
 
     <BottomTabbar active="cook" />
@@ -287,27 +281,4 @@ function formatDuration(durationMs: number) {
   font-size: 21rpx;
 }
 
-.tipbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8rpx;
-  min-height: 76rpx;
-  margin-top: 22rpx;
-  padding: 0 24rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(90deg, #fff5e9, #fffdfb);
-  color: $text-sub;
-  font-size: 25rpx;
-}
-
-.tipbar text:first-child {
-  color: $text-main;
-  font-weight: 800;
-}
-
-.arrow {
-  color: $primary;
-  font-size: 42rpx;
-}
 </style>

@@ -1,6 +1,6 @@
 <template>
   <AppPage v-if="dish">
-    <AppNavbar title="上传成品 📸" subtitle="分享你的美味成果，记录每一次进步 ✨" back />
+    <AppNavbar title="上传成品 📸" back />
 
     <view class="dish-strip card">
       <image :src="dish.coverImage" mode="aspectFill" />
@@ -30,8 +30,8 @@
     <view class="form-card card">
       <text class="block-title">口味反馈 🍲</text>
       <view class="taste-row">
-        <button v-for="item in tastes" :key="item" :class="{ active: taste === item }" @tap="taste = item">
-          {{ item }}
+        <button v-for="item in tastes" :key="item" :class="['taste-chip', { active: taste === item }]" @tap="taste = item">
+          <text>{{ item }}</text>
         </button>
       </view>
     </view>
@@ -44,8 +44,7 @@
 
     <view class="switch-card card">
       <view>
-        <text class="block-title">是否加入历史记录 📖</text>
-        <text>加入后可在“历史记录”中查看与复做</text>
+        <text class="block-title">加入历史记录 📖</text>
       </view>
       <button :class="['switch-toggle', includeInHistory ? 'active' : '']" hover-class="tap" @tap="includeInHistory = !includeInHistory">
         <view />
@@ -230,16 +229,29 @@ async function submit() {
   margin-top: 24rpx;
 }
 
-.taste-row button {
+.taste-chip {
   height: 62rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16rpx;
   border: 1rpx solid $border;
   border-radius: 999rpx;
   color: $text-sub;
   font-size: 26rpx;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
 }
 
-.taste-row button.active {
+.taste-chip text {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.taste-chip.active {
   border-color: $primary;
   color: #fff;
   background: linear-gradient(135deg, $primary-2, $primary);
@@ -263,13 +275,6 @@ textarea {
   color: $text-sub;
   font-size: 24rpx;
   text-align: right;
-}
-
-.switch-card > view text:last-child {
-  display: block;
-  margin-top: 8rpx;
-  color: $text-sub;
-  font-size: 24rpx;
 }
 
 .switch-toggle {

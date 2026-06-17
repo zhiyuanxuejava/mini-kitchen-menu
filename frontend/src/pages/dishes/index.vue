@@ -3,7 +3,6 @@
     <view class="page-head">
       <view class="head-copy">
         <text class="title-xl">{{ libraryPrefix }}<text class="accent">菜品库</text></text>
-        <text class="head-sub">{{ libraryHint }}</text>
       </view>
       <button class="library-toggle" hover-class="tap" @tap="toggleSource">
         <image :src="icons.basket" mode="aspectFit" />
@@ -100,9 +99,9 @@
       @add="store.addToMenu"
       @favorite="toggleFavorite"
     />
-    <view v-if="store.loading" class="loading-card card">正在同步后台菜品...</view>
+    <view v-if="store.loading" class="loading-card card">菜品同步中</view>
     <view v-if="store.apiError" class="api-error card">{{ store.apiError }}</view>
-    <EmptyState v-if="!dishes.length" title="没有找到菜品" desc="换个关键词，或新增一道自己的拿手菜。" />
+    <EmptyState v-if="!dishes.length" title="没有找到菜品" />
 
     <BottomTabbar active="dishes" />
   </AppPage>
@@ -171,7 +170,6 @@ const activeLearnedStatusLabel = computed(() => {
   return '状态'
 })
 const libraryPrefix = computed(() => (activeSource.value === 'user_created' ? '我的' : '公共'))
-const libraryHint = computed(() => (activeSource.value === 'user_created' ? '查看和管理自己添加的菜品' : '浏览大家都能使用的公共菜品'))
 const selectedSuggestion = computed(() => (selectedSuggestionId.value ? store.getDish(selectedSuggestionId.value) : undefined))
 const searchSuggestions = computed(() => {
   if (!keyword.value.trim() || selectedSuggestionId.value) return []
@@ -352,14 +350,6 @@ async function toggleFavorite(id: string) {
 
 .head-copy {
   min-width: 0;
-}
-
-.head-sub {
-  display: block;
-  margin-top: 10rpx;
-  color: $text-sub;
-  font-size: 22rpx;
-  line-height: 1.5;
 }
 
 .library-toggle,

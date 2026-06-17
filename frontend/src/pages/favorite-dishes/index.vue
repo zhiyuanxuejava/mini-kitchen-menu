@@ -1,11 +1,10 @@
 <template>
   <AppPage no-tab>
-    <AppNavbar title="我的收藏" subtitle="集中查看你收藏过的菜谱" back />
+    <AppNavbar title="我的收藏" back />
 
     <view class="hero card">
       <view class="hero-copy">
         <text class="hero-title">收藏菜谱夹</text>
-        <text class="hero-sub">喜欢的菜先收起来，后面做菜、加菜单和复做都会更快找到。</text>
       </view>
       <view class="hero-stat">
         <text class="hero-stat-label">当前收藏</text>
@@ -73,11 +72,7 @@
       </TimelineGroup>
     </view>
 
-    <EmptyState
-      v-else
-      title="时间线还是空的"
-      desc="在菜品库、首页推荐或菜品详情里点一下收藏，会按时间沉淀到这里。"
-    />
+    <EmptyState v-else title="还没有收藏菜品" />
   </AppPage>
 </template>
 
@@ -189,7 +184,6 @@ async function toggleFavorite(id: string) {
 }
 
 .hero-title,
-.hero-sub,
 .hero-stat-label,
 .hero-stat-value {
   display: block;
@@ -199,13 +193,6 @@ async function toggleFavorite(id: string) {
   color: $text-main;
   font-size: 38rpx;
   font-weight: 900;
-}
-
-.hero-sub {
-  margin-top: 12rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 
 .hero-stat {

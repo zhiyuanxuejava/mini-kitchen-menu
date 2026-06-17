@@ -2,7 +2,7 @@
   <view class="empty">
     <image :src="icons.empty" mode="aspectFit" />
     <text class="title">{{ title }}</text>
-    <text class="desc">{{ desc }}</text>
+    <text v-if="desc" class="desc">{{ desc }}</text>
   </view>
 </template>
 
@@ -11,7 +11,7 @@ import { icons } from '@/data/assets'
 
 defineProps<{
   title: string
-  desc: string
+  desc?: string
 }>()
 </script>
 

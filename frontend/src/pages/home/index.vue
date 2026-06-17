@@ -48,7 +48,6 @@
     </view>
     <view v-else class="recent-empty card" @tap="goRecords">
       <text class="empty-title">还没有最近做过的菜</text>
-      <text class="empty-desc">完成一道菜并上传成品后，会在这里显示最近记录。</text>
     </view>
 
     <BottomTabbar active="home" />
@@ -230,8 +229,7 @@ async function toggleFavorite(id: string) {
   background: rgba(255, 253, 250, 0.72);
 }
 
-.empty-title,
-.empty-desc {
+.empty-title {
   display: block;
 }
 
@@ -241,10 +239,4 @@ async function toggleFavorite(id: string) {
   font-weight: 900;
 }
 
-.empty-desc {
-  margin-top: 10rpx;
-  color: $text-sub;
-  font-size: 24rpx;
-  line-height: 1.45;
-}
 </style>
