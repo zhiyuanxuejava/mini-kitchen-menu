@@ -38,6 +38,21 @@ export async function reloadToLatestVersion(): Promise<void> {
   await forceReloadToHash(window.location.hash, { preserveAuth: true })
 }
 
+export function getLocalVersionInfo(): { version: string; buildAt: string } {
+  const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'unknown'
+  const buildAt = typeof __APP_BUILD_AT__ === 'string' ? __APP_BUILD_AT__ : 'unknown'
+  return { version, buildAt }
+}
+
+export async function fetchLatestServerVersion(): Promise<string | null> {
+  // #ifdef H5
+  return fetchServerVersion()
+  // #endif
+  // #ifndef H5
+  return null
+  // #endif
+}
+
 // #ifdef H5
 
 const SNOOZE_MS = 30 * 60 * 1000

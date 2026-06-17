@@ -152,6 +152,21 @@
           <text class="setting-arrow">›</text>
         </view>
       </button>
+      <view class="version-row">
+        <text class="version-label">版本信息</text>
+        <view class="version-line">
+          <text class="version-current">当前版本 {{ localVersion }}</text>
+          <text v-if="versionCheckState === 'latest'" class="version-pill latest">已是最新</text>
+          <text v-else-if="versionCheckState === 'outdated'" class="version-pill outdated">有新版本</text>
+          <text v-else-if="versionCheckState === 'checking'" class="version-pill checking">检测中</text>
+          <text v-else class="version-pill unknown">无法检测</text>
+        </view>
+        <text class="version-meta">构建时间 {{ localBuildAtText }}</text>
+        <view v-if="serverVersion && serverVersion !== localVersion" class="version-line">
+          <text class="version-server">最新版本 {{ serverVersion }}</text>
+          <button class="version-update-btn" hover-class="tap" @tap="goReloadToLatest">立即更新</button>
+        </view>
+      </view>
     </view>
 
     <view v-if="reloginDialogVisible" class="confirm-layer">
@@ -188,6 +203,11 @@ import AppPage from '@/components/AppPage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { icons } from '@/data/assets'
 import { useKitchenStore } from '@/stores/kitchen'
+import {
+  fetchLatestServerVersion,
+  getLocalVersionInfo,
+  reloadToLatestVersion
+} from '@/utils/version-check'
 import { openWechatPrivacyContract, syncWechatPrivacySetting, wechatPrivacyState } from '@/utils/wechat-privacy'
 
 const store = useKitchenStore()
@@ -195,6 +215,12 @@ const refreshing = ref(false)
 const reloginDialogVisible = ref(false)
 const clearingCache = ref(false)
 const isWechatRuntime = typeof globalThis !== 'undefined' && 'wx' in globalThis
+
+const { version: localVersion, buildAt: localBuildAt } = getLocalVersionInfo()
+const serverVersion = ref<string | null>(null)
+const versionCheckState = ref<'idle' | 'checking' | 'latest' | 'outdated' | 'unknown'>('idle')
+
+const localBuildAtText = computed(() => formatBuildAt(localBuildAt))
 
 onShow(async () => {
   store.hydrate()
@@ -210,7 +236,40 @@ onShow(async () => {
     }
   }
   await refreshAll(false)
+  void checkServerVersion()
 })
+
+async function checkServerVersion() {
+  if (localVersion === 'unknown') {
+    versionCheckState.value = 'unknown'
+    return
+  }
+  versionCheckState.value = 'checking'
+  const latest = await fetchLatestServerVersion()
+  if (!latest) {
+    versionCheckState.value = 'unknown'
+    serverVersion.value = null
+    return
+  }
+  serverVersion.value = latest
+  versionCheckState.value = latest === localVersion ? 'latest' : 'outdated'
+}
+
+function formatBuildAt(value: string): string {
+  if (!value || value === 'unknown') return '未知'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+async function goReloadToLatest() {
+  try {
+    await reloadToLatestVersion()
+  } catch {
+    uni.showToast({ title: '刷新失败，请手动刷新', icon: 'none' })
+  }
+}
 
 const displayName = computed(() => store.user?.nickname || '小厨房')
 const displayEmail = computed(() => store.user?.email || '微信登录账号')
@@ -623,5 +682,88 @@ function logout() {
   line-height: 1.1;
   text-align: center;
   box-shadow: 0 12rpx 24rpx rgba(255, 123, 37, 0.12);
+}
+
+.version-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 22rpx 6rpx 18rpx;
+  border-top: 1rpx solid #f2e7de;
+}
+
+.version-label {
+  color: $text-sub;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
+}
+
+.version-line {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 4rpx;
+}
+
+.version-current,
+.version-server {
+  color: $text-main;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.version-server {
+  color: $primary;
+}
+
+.version-meta {
+  color: $text-sub;
+  font-size: 22rpx;
+}
+
+.version-pill {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.version-pill.latest {
+  background: #e7f6ec;
+  color: #2f8a4d;
+}
+
+.version-pill.outdated {
+  background: #ffe9dc;
+  color: #d25522;
+}
+
+.version-pill.checking {
+  background: #eef1f5;
+  color: #5d6b7a;
+}
+
+.version-pill.unknown {
+  background: #f2ebe3;
+  color: #8a7a6a;
+}
+
+.version-update-btn {
+  height: 52rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  border: 0;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #ff8c38 0%, #ff7026 100%);
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 52rpx;
+}
+
+.version-update-btn::after {
+  border: 0;
 }
 </style>
