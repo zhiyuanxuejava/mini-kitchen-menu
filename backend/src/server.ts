@@ -76,8 +76,7 @@ const upload = multer({
   dest: uploadDir,
   limits: { fileSize: maxUploadFileSize, files: 3 },
   fileFilter: (_req, file, callback) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-    if (allowed.includes(file.mimetype)) {
+    if (isPotentialImageUpload(file)) {
       callback(null, true)
       return
     }
@@ -107,7 +106,12 @@ app.use(cors({
   }
 }))
 app.use(express.json({ limit: '4mb' }))
-app.use('/uploads', express.static(uploadDir))
+app.use('/uploads', express.static(uploadDir, {
+  setHeaders(res, filePath) {
+    const imageType = detectImageFileType(filePath)
+    if (imageType) res.setHeader('Content-Type', imageType.mime)
+  }
+}))
 app.use('/static', express.static(backendStaticDir))
 app.use('/static', express.static(staticDir))
 
@@ -122,6 +126,82 @@ class HttpError extends Error {
     super(message)
     this.status = status
   }
+}
+
+type UploadImageType = {
+  ext: '.jpg' | '.png' | '.webp' | '.heic' | '.heif'
+  mime: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic' | 'image/heif'
+}
+
+const allowedUploadMimes = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/x-png',
+  'image/webp',
+  'image/heic',
+  'image/heif'
+])
+const allowedUploadExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'])
+
+function isPotentialImageUpload(file: Express.Multer.File) {
+  const mime = file.mimetype.toLowerCase()
+  const ext = path.extname(file.originalname || '').toLowerCase()
+  return allowedUploadMimes.has(mime) || allowedUploadExtensions.has(ext) || !mime || mime === 'application/octet-stream'
+}
+
+function hasAscii(buffer: Buffer, offset: number, value: string) {
+  return buffer.length >= offset + value.length && buffer.subarray(offset, offset + value.length).toString('ascii') === value
+}
+
+function detectImageTypeFromBuffer(buffer: Buffer): UploadImageType | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { ext: '.jpg', mime: 'image/jpeg' }
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return { ext: '.png', mime: 'image/png' }
+  }
+  if (hasAscii(buffer, 0, 'RIFF') && hasAscii(buffer, 8, 'WEBP')) {
+    return { ext: '.webp', mime: 'image/webp' }
+  }
+  if (hasAscii(buffer, 4, 'ftyp')) {
+    const brand = buffer.subarray(8, 12).toString('ascii')
+    if (['heic', 'heix', 'hevc', 'hevx'].includes(brand)) return { ext: '.heic', mime: 'image/heic' }
+    if (['heif', 'mif1', 'msf1'].includes(brand)) return { ext: '.heif', mime: 'image/heif' }
+  }
+  return null
+}
+
+function detectImageFileType(filePath: string) {
+  try {
+    const fd = fs.openSync(filePath, 'r')
+    try {
+      const buffer = Buffer.alloc(32)
+      const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0)
+      return detectImageTypeFromBuffer(buffer.subarray(0, bytesRead))
+    } finally {
+      fs.closeSync(fd)
+    }
+  } catch {
+    return null
+  }
+}
+
+function removeFileIfExists(filePath: string) {
+  try {
+    fs.rmSync(filePath, { force: true })
+  } catch {}
 }
 
 type WechatCode2SessionResponse = {
@@ -930,15 +1010,40 @@ app.post('/cook/:id/finish', auth, async (req: AuthedRequest, res) => {
   res.json(item)
 })
 
-app.post('/uploads', auth, upload.array('files', 3), (req, res) => {
+app.post('/uploads', auth, upload.array('files', 3), (req, res, next) => {
   const files = (req.files as Express.Multer.File[] | undefined) || []
-  res.json({
-    files: files.map((file) => ({
-      filename: file.filename,
-      url: `/uploads/${file.filename}`,
-      originalName: file.originalname
-    }))
-  })
+  const finalizedPaths: string[] = []
+
+  try {
+    if (!files.length) {
+      throw new HttpError(400, '没有收到图片文件，请重新选择后上传')
+    }
+
+    const uploaded = files.map((file) => {
+      const imageType = detectImageFileType(file.path)
+      if (!imageType) {
+        throw new HttpError(400, '仅支持上传 JPG、PNG、WebP、HEIC 图片')
+      }
+
+      const filename = `${file.filename}${imageType.ext}`
+      const finalPath = path.join(uploadDir, filename)
+      fs.renameSync(file.path, finalPath)
+      finalizedPaths.push(finalPath)
+
+      return {
+        filename,
+        url: `/uploads/${filename}`,
+        originalName: file.originalname,
+        mimeType: imageType.mime
+      }
+    })
+
+    res.json({ files: uploaded })
+  } catch (error) {
+    for (const file of files) removeFileIfExists(file.path)
+    for (const filePath of finalizedPaths) removeFileIfExists(filePath)
+    next(error)
+  }
 })
 
 app.post('/records', auth, async (req: AuthedRequest, res) => {

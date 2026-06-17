@@ -299,6 +299,59 @@ function serializeMediaUrl(value?: string | null) {
   return next
 }
 
+function parseMaybeJson(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  const text = value.trim()
+  if (!text) return {}
+  if (!text.startsWith('{') && !text.startsWith('[')) return text
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+function objectValue(value: unknown, key: string) {
+  if (!value || typeof value !== 'object') return undefined
+  return (value as Record<string, unknown>)[key]
+}
+
+function uploadResponseMessage(value: unknown): string {
+  const parsed = parseMaybeJson(value)
+  if (typeof parsed === 'string') return parsed.slice(0, 80)
+  const message = objectValue(parsed, 'message') || objectValue(parsed, 'error') || objectValue(parsed, 'errmsg')
+  if (typeof message === 'string' && message.trim()) return message.trim()
+  const nested = objectValue(parsed, 'data')
+  return nested === parsed ? '' : uploadResponseMessage(nested)
+}
+
+function uploadResponseUrl(value: unknown): string {
+  const parsed = parseMaybeJson(value)
+  if (!parsed || typeof parsed !== 'object') return ''
+
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      const url = uploadResponseUrl(item)
+      if (url) return url
+    }
+    return ''
+  }
+
+  const directUrl = objectValue(parsed, 'url') || objectValue(parsed, 'fileUrl')
+  if (typeof directUrl === 'string' && directUrl.trim()) return directUrl.trim()
+
+  const files = objectValue(parsed, 'files')
+  if (Array.isArray(files)) {
+    for (const file of files) {
+      const url = uploadResponseUrl(file)
+      if (url) return url
+    }
+  }
+
+  const nested = objectValue(parsed, 'data')
+  return nested === parsed ? '' : uploadResponseUrl(nested)
+}
+
 function normalizeUser(user: BackendUser): UserProfile {
   return {
     id: user.id,
@@ -593,18 +646,21 @@ export const kitchenApi = {
           name: 'files',
           header: { Authorization: `Bearer ${token}` },
           success: (response) => {
-            try {
-              const data = JSON.parse(response.data) as { files?: Array<{ url: string }> }
-              const url = data.files?.[0]?.url
-              if (!url) {
-                reject(new Error('上传成功但未返回文件地址'))
-                return
-              }
-              uploaded.push(url)
-              next()
-            } catch (error) {
-              reject(error instanceof Error ? error : new Error('上传响应解析失败'))
+            const body = parseMaybeJson(response.data as unknown)
+            const status = response.statusCode || 0
+            if (status && (status < 200 || status >= 300)) {
+              reject(new ApiError(status, uploadResponseMessage(body) || `上传失败 ${status}`))
+              return
             }
+
+            const url = uploadResponseUrl(body)
+            if (!url) {
+              reject(new Error(uploadResponseMessage(body) || '上传成功但未返回文件地址'))
+              return
+            }
+
+            uploaded.push(url)
+            next()
           },
           fail: (error) => reject(new Error(error.errMsg || '上传失败'))
         })
