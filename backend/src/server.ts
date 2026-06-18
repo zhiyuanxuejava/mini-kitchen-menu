@@ -305,54 +305,83 @@ function syncKeyFromRecipeSource(source: RecipeImportSource | undefined, name: s
 }
 
 async function seedSystemDishesFromSample() {
-  const count = await prisma.dish.count({ where: { sourceType: 'system_sync' } })
-  if (count > 0) return
-
   const sourceByName = new Map(readRecipeSources().map((source) => [source.name, source]))
 
-  await Promise.all(
-    sampleDishes.map((dish) => {
-      const source = sourceByName.get(dish.name)
-      return prisma.dish.create({
+  for (const dish of sampleDishes) {
+    const source = sourceByName.get(dish.name)
+    const syncKey = syncKeyFromRecipeSource(source, dish.name)
+    const data = {
+      ownerUserId: null,
+      copiedFromDishId: null,
+      name: dish.name,
+      category: dish.category,
+      coverImage: dish.coverImage,
+      description: dish.description,
+      remark: '',
+      difficulty: dish.difficulty,
+      estimatedMinutes: dish.estimatedMinutes,
+      servings: dish.servings,
+      tasteTags: JSON.stringify(dish.tasteTags),
+      sourceType: 'system_sync' as const,
+      sourceName: 'HowToCook',
+      sourceUrl: source?.recipeSource,
+      sourceLicense: source?.recipeLicense || 'HowToCook / Unlicense public domain dedication',
+      syncKey,
+      status: 'published'
+    }
+    const ingredients = dish.ingredients.map(([groupType, name, amount], index) => ({
+      groupType,
+      name,
+      amount,
+      sortOrder: index
+    }))
+    const steps = dish.steps.map((step, index) => ({
+      stepNo: index + 1,
+      title: step.title,
+      description: step.description,
+      image: step.image || dish.coverImage,
+      heat: step.heat,
+      minutes: step.minutes,
+      tips: step.tips
+    }))
+
+    const existing = await prisma.dish.findFirst({
+      where: {
+        sourceType: 'system_sync',
+        OR: [
+          { syncKey },
+          { syncKey: null, name: dish.name, category: dish.category }
+        ]
+      },
+      select: { id: true }
+    })
+
+    if (!existing) {
+      await prisma.dish.create({
         data: {
-          ownerUserId: null,
-          name: dish.name,
-          category: dish.category,
-          coverImage: dish.coverImage,
-          description: dish.description,
-          difficulty: dish.difficulty,
-          estimatedMinutes: dish.estimatedMinutes,
-          servings: dish.servings,
-          tasteTags: JSON.stringify(dish.tasteTags),
-          sourceType: 'system_sync',
-          sourceName: 'HowToCook',
-          sourceUrl: source?.recipeSource,
-          sourceLicense: source?.recipeLicense || 'HowToCook / Unlicense public domain dedication',
-          syncKey: syncKeyFromRecipeSource(source, dish.name),
-          status: 'published',
-          ingredients: {
-            create: dish.ingredients.map(([groupType, name, amount], index) => ({
-              groupType,
-              name,
-              amount,
-              sortOrder: index
-            }))
-          },
-          steps: {
-            create: dish.steps.map((step, index) => ({
-              stepNo: index + 1,
-              title: step.title,
-              description: step.description,
-              image: step.image || dish.coverImage,
-              heat: step.heat,
-              minutes: step.minutes,
-              tips: step.tips
-            }))
-          }
+          ...data,
+          ingredients: { create: ingredients },
+          steps: { create: steps }
         }
       })
-    })
-  )
+      continue
+    }
+
+    await prisma.$transaction([
+      prisma.dish.update({
+        where: { id: existing.id },
+        data
+      }),
+      prisma.dishIngredient.deleteMany({ where: { dishId: existing.id } }),
+      prisma.dishStep.deleteMany({ where: { dishId: existing.id } }),
+      prisma.dishIngredient.createMany({
+        data: ingredients.map((item) => ({ dishId: existing.id, ...item }))
+      }),
+      prisma.dishStep.createMany({
+        data: steps.map((item) => ({ dishId: existing.id, ...item }))
+      })
+    ])
+  }
 }
 
 function visibleDishWhere(userId: string) {
