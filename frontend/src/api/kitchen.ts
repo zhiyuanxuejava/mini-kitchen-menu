@@ -456,7 +456,7 @@ export function normalizeDish(row: BackendDish): Dish {
     ratingCount: 0,
     isFavorite: row.isFavorite,
     learnedAt: row.learnedAt || undefined,
-    sourceType: row.sourceType || 'user_created',
+    sourceType: row.sourceType || (row.ownerUserId ? 'user_created' : 'system_sync'),
     sourceName: row.sourceName || undefined,
     sourceUrl: row.sourceUrl || undefined,
     sourceLicense: row.sourceLicense || undefined,
@@ -567,6 +567,13 @@ export const kitchenApi = {
       method: 'DELETE',
       token
     })
+  },
+  async copyDishToMine(token: string, id: string) {
+    const row = await request<BackendDish>(`/dishes/${id}/copy`, {
+      method: 'POST',
+      token
+    })
+    return normalizeDish(row)
   },
   async getTodayMenu(token: string) {
     const row = await request<BackendTodayMenu>('/menus/today', { token })

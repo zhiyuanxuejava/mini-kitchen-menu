@@ -24,9 +24,13 @@
         <image class="mini" :src="icons.check" mode="aspectFit" />
         <text>我已学会</text>
       </view>
+      <view v-if="dish.sourceType !== 'user_created'" class="source-chip">
+        <text>公共菜品</text>
+      </view>
     </view>
     <view class="buttons">
       <button class="ghost-btn" hover-class="tap" @tap="$emit('view', dish.id)">查看做法</button>
+      <button v-if="dish.sourceType !== 'user_created'" class="ghost-btn" hover-class="tap" @tap="$emit('copy', dish.id)">添加到我的菜品</button>
       <button class="primary-btn" hover-class="tap" @tap="$emit('add', dish.id)">加入点菜单</button>
     </view>
   </view>
@@ -44,6 +48,7 @@ defineEmits<{
   view: [id: string]
   add: [id: string]
   favorite: [id: string]
+  copy: [id: string]
 }>()
 </script>
 
@@ -148,6 +153,18 @@ defineEmits<{
   border-radius: 999rpx;
   background: #eef8e8;
   color: $success;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #fff3e7;
+  color: $primary;
   font-size: 22rpx;
   font-weight: 800;
 }

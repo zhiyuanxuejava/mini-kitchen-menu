@@ -1437,6 +1437,43 @@ export const useKitchenStore = defineStore('kitchen', {
       this.persist()
       return dish.id
     },
+    async copyDishToMine(id: string) {
+      const existing = this.getDish(id)
+      if (!existing) throw new Error('菜品不存在')
+      this.requireSession()
+
+      if (this.token) {
+        const dish = await this.runRemote(() => kitchenApi.copyDishToMine(this.token, id))
+        this.dishes.unshift(dish)
+        await this.refreshStats()
+        this.persist()
+        return dish.id
+      }
+
+      const copied: Dish = {
+        ...existing,
+        id: makeId('dish'),
+        sourceType: 'user_created',
+        sourceName: '复制自公共菜品',
+        ownerUserId: this.user?.id,
+        isFavorite: false,
+        learnedAt: undefined,
+        createdAt: new Date().toISOString(),
+        ingredients: existing.ingredients.map((item, index) => ({
+          ...item,
+          id: makeId('ingredient'),
+          sortOrder: index
+        })),
+        steps: existing.steps.map((item, index) => ({
+          ...item,
+          id: makeId('step'),
+          stepNo: index + 1
+        }))
+      }
+      this.dishes.unshift(copied)
+      this.persist()
+      return copied.id
+    },
     async updateDish(id: string, input: EditableDishInput) {
       const existing = this.getDish(id)
       if (!existing || !this.canEditDish(existing)) throw new Error('当前用户无权编辑这道菜')

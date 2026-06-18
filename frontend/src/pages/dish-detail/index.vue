@@ -55,10 +55,12 @@
         >
           <text class="detail-secondary-label">{{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}</text>
         </button>
+        <button v-if="canCopyToMine" class="detail-secondary-btn" hover-class="tap" @tap="copyDishToMine">
+          <text class="detail-secondary-label">＋ 添加到我的菜品</text>
+        </button>
         <button v-if="canEdit" class="detail-secondary-btn" hover-class="tap" @tap="editDish">
           <text class="detail-secondary-label">✎ 编辑菜品</text>
         </button>
-        <view v-if="!canEdit && canToggleLearned" class="detail-secondary-placeholder" />
       </view>
     </view>
 
@@ -153,6 +155,7 @@ onShow(async () => {
 const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
 const canToggleLearned = computed(() => Boolean(dish.value?.id))
+const canCopyToMine = computed(() => dish.value?.sourceType !== 'user_created')
 const learnedTimeLabel = computed(() => formatLearnedTime(dish.value?.learnedAt))
 const displaySteps = computed(() => resolvedDishSteps(dish.value))
 const hasStructuredSteps = computed(() => hasStructuredDishSteps(dish.value))
@@ -186,6 +189,17 @@ async function toggleFavorite() {
     uni.showToast({ title: favorite ? '已加入收藏' : '已取消收藏', icon: 'none' })
   } catch {
     uni.showToast({ title: store.apiError || '收藏状态更新失败', icon: 'none' })
+  }
+}
+
+async function copyDishToMine() {
+  if (!dish.value) return
+  try {
+    const nextId = await store.copyDishToMine(dish.value.id)
+    uni.showToast({ title: '已添加到我的菜品', icon: 'success' })
+    uni.navigateTo({ url: `/pages/dish-detail/index?id=${nextId}` })
+  } catch {
+    uni.showToast({ title: store.apiError || '添加失败', icon: 'none' })
   }
 }
 

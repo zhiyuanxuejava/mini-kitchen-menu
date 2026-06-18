@@ -902,6 +902,66 @@ app.delete('/dishes/:id', auth, async (req: AuthedRequest, res) => {
   res.json({ ok: true })
 })
 
+app.post('/dishes/:id/copy', auth, async (req: AuthedRequest, res) => {
+  const id = param(req.params.id)
+  const sourceDish = await findVisibleDish(id, req.user!.id)
+  if (!sourceDish) {
+    res.status(404).json({ message: 'Dish not found' })
+    return
+  }
+  if (sourceDish.sourceType !== 'system_sync') {
+    res.status(400).json({ message: '只有公共菜品可以添加到我的菜品库' })
+    return
+  }
+
+  const dish = await prisma.dish.create({
+    data: {
+      ownerUserId: req.user!.id,
+      name: sourceDish.name,
+      category: sourceDish.category,
+      coverImage: sourceDish.coverImage,
+      description: sourceDish.description,
+      remark: sourceDish.remark,
+      difficulty: sourceDish.difficulty,
+      estimatedMinutes: sourceDish.estimatedMinutes,
+      servings: sourceDish.servings,
+      tasteTags: sourceDish.tasteTags,
+      sourceType: 'user_created',
+      sourceName: '复制自公共菜品',
+      sourceUrl: sourceDish.sourceUrl,
+      sourceLicense: sourceDish.sourceLicense,
+      status: 'published',
+      ingredients: {
+        create: sourceDish.ingredients.map((item, index) => ({
+          groupType: item.groupType,
+          name: item.name,
+          amount: item.amount,
+          sortOrder: index
+        }))
+      },
+      steps: {
+        create: sourceDish.steps.map((item, index) => ({
+          title: item.title,
+          description: item.description,
+          image: item.image || sourceDish.coverImage,
+          heat: item.heat,
+          minutes: item.minutes,
+          tips: item.tips,
+          stepNo: index + 1
+        }))
+      }
+    },
+    include: {
+      categoryRef: true,
+      ingredients: { orderBy: { sortOrder: 'asc' } },
+      steps: { orderBy: { stepNo: 'asc' } },
+      learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+      favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
+    }
+  })
+  res.status(201).json(serializeDishWithLearnedAt(dish))
+})
+
 app.get('/menus/today', auth, async (req: AuthedRequest, res) => {
   res.json(await todayMenu(req.user!.id))
 })
