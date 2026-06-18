@@ -104,15 +104,15 @@
       <view class="section-head">
         <text class="section-title">数据与记录</text>
       </view>
-      <button class="setting-row" hover-class="tap" @tap="refreshAll">
+      <button class="setting-row" hover-class="tap" @tap="syncAllData">
         <view class="setting-icon warm">
           <image :src="icons.database" mode="aspectFit" />
         </view>
         <view class="setting-copy">
-          <text class="setting-title">刷新数据</text>
+          <text class="setting-title">同步数据</text>
         </view>
         <view class="setting-meta">
-          <text class="setting-value">{{ refreshing ? '刷新中' : '立即刷新' }}</text>
+          <text class="setting-value">{{ refreshing ? '同步中' : '立即同步' }}</text>
           <text class="setting-arrow">›</text>
         </view>
       </button>
@@ -292,6 +292,19 @@ async function refreshAll(showToast = true) {
     if (showToast) uni.showToast({ title: '数据已刷新', icon: 'success' })
   } catch {
     if (showToast) uni.showToast({ title: store.apiError || '刷新失败', icon: 'none' })
+  } finally {
+    refreshing.value = false
+  }
+}
+
+async function syncAllData() {
+  if (!store.token || refreshing.value) return
+  refreshing.value = true
+  try {
+    const syncedDishCount = await store.syncSystemDishes()
+    uni.showToast({ title: `已同步 ${syncedDishCount} 道菜品`, icon: 'success' })
+  } catch {
+    uni.showToast({ title: store.apiError || '同步失败', icon: 'none' })
   } finally {
     refreshing.value = false
   }

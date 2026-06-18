@@ -177,6 +177,11 @@ type BackendStats = {
   averageRating: number
 }
 
+type BackendSyncSystemDishesResponse = {
+  ok: true
+  syncedDishCount: number
+}
+
 type BackendLearnedDishEntry = {
   id: string
   learnedAt: string
@@ -583,6 +588,12 @@ export const kitchenApi = {
   },
   async getMyStats(token: string) {
     return request<MeStats>('/me/stats', { token })
+  },
+  async syncSystemDishes(token: string) {
+    return request<BackendSyncSystemDishesResponse>('/dishes/sync-system', {
+      method: 'POST',
+      token
+    })
   },
   async listLearnedDishes(token: string) {
     const rows = await request<BackendLearnedDishEntry[]>('/me/learned-dishes', { token })

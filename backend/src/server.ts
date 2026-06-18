@@ -384,6 +384,11 @@ async function seedSystemDishesFromSample() {
   }
 }
 
+async function syncSystemDishesFromSample() {
+  await seedSystemDishesFromSample()
+  return prisma.dish.count({ where: { sourceType: 'system_sync', status: 'published' } })
+}
+
 function visibleDishWhere(userId: string) {
   return {
     OR: [
@@ -783,6 +788,11 @@ app.get('/dishes', auth, async (req: AuthedRequest, res) => {
     }
   })
   res.json(dishes.map(serializeDishWithLearnedAt))
+})
+
+app.post('/dishes/sync-system', auth, async (_req: AuthedRequest, res) => {
+  const syncedDishCount = await syncSystemDishesFromSample()
+  res.json({ ok: true, syncedDishCount })
 })
 
 app.post('/dishes', auth, async (req: AuthedRequest, res) => {
@@ -1557,7 +1567,7 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 await ensureDatabase(prisma)
-await seedSystemDishesFromSample()
+await syncSystemDishesFromSample()
 
 app.listen(port, host, () => {
   console.log(`Zhangshao menu API listening on http://${host}:${port}`)

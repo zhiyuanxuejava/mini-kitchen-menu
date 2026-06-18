@@ -15,11 +15,6 @@
         页面内容已经更新，刷新后就能使用最新功能和修复。
       </text>
 
-      <view class="version-note">
-        <text class="note-dot"></text>
-        <text>不会影响已登录状态和已保存的数据。</text>
-      </view>
-
       <view class="version-actions">
         <button class="ghost-btn version-btn" hover-class="tap" @tap="snoozeVersionUpdate">稍后</button>
         <button class="primary-btn version-btn" hover-class="tap" @tap="reloadToLatestVersion">立即更新</button>
@@ -67,8 +62,7 @@ import { reloadToLatestVersion, snoozeVersionUpdate, versionUpdateState } from '
 
 .version-eyebrow,
 .version-title,
-.version-copy,
-.version-note {
+.version-copy {
   display: block;
 }
 
@@ -109,28 +103,6 @@ import { reloadToLatestVersion, snoozeVersionUpdate, versionUpdateState } from '
   color: $text-sub;
   font-size: 27rpx;
   line-height: 1.65;
-}
-
-.version-note {
-  margin-top: 20rpx;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 20rpx;
-  background: rgba(255, 244, 235, 0.9);
-  color: $text-sub;
-  font-size: 23rpx;
-  line-height: 1.45;
-}
-
-.note-dot {
-  width: 12rpx;
-  height: 12rpx;
-  flex: 0 0 auto;
-  border-radius: 999rpx;
-  background: $primary;
-  box-shadow: 0 0 0 8rpx rgba(255, 106, 26, 0.12);
 }
 
 .version-actions {

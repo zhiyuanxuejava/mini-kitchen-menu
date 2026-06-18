@@ -1037,6 +1037,12 @@ export const useKitchenStore = defineStore('kitchen', {
       if (repaired.changed) this.records = repaired.records
       this.persist()
     },
+    async syncSystemDishes() {
+      this.requireSession()
+      const result = await this.runRemote(() => kitchenApi.syncSystemDishes(this.token))
+      await this.refreshSessionData()
+      return result.syncedDishCount
+    },
     async refreshDishes() {
       if (!this.token) return
       const dishes = await this.runRemote(() => kitchenApi.listDishes(this.token))
