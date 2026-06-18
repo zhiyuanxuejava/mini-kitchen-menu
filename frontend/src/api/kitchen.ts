@@ -96,6 +96,7 @@ type BackendStep = {
 type BackendDish = {
   id: string
   ownerUserId?: string | null
+  copiedFromDishId?: string | null
   name: string
   category: DishCategory
   coverImage: string
@@ -440,6 +441,7 @@ export function normalizeDish(row: BackendDish): Dish {
 
   return {
     id: row.id,
+    copiedFromDishId: row.copiedFromDishId || undefined,
     name: row.name,
     emoji: emojiFor(row.category, row.name),
     category: row.category,

@@ -183,6 +183,14 @@ generate_prisma_client() {
   )
 }
 
+sync_database_schema() {
+  echo "Synchronizing database schema with data-preserving updates..."
+  (
+    cd "$APP_DIR"
+    npm --workspace backend run sync-db
+  )
+}
+
 prepare_frontend_config() {
   echo "Preparing frontend manifest files..."
   (
@@ -515,6 +523,7 @@ generate_prisma_client
 prepare_frontend_config
 build_project
 ensure_writable_dirs
+sync_database_schema
 install_systemd_service
 install_nginx_config
 verify_services

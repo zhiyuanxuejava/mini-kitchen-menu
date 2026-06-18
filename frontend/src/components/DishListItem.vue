@@ -30,7 +30,6 @@
     </view>
     <view class="buttons">
       <button class="ghost-btn" hover-class="tap" @tap="$emit('view', dish.id)">查看做法</button>
-      <button v-if="dish.sourceType !== 'user_created'" class="ghost-btn" hover-class="tap" @tap="$emit('copy', dish.id)">添加到我的菜品</button>
       <button class="primary-btn" hover-class="tap" @tap="$emit('add', dish.id)">加入点菜单</button>
     </view>
   </view>
@@ -48,7 +47,6 @@ defineEmits<{
   view: [id: string]
   add: [id: string]
   favorite: [id: string]
-  copy: [id: string]
 }>()
 </script>
 

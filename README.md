@@ -52,6 +52,7 @@ npm run dev:mp-weixin
 
 ```bash
 npm run prisma:generate
+npm --workspace backend run sync-db
 npm run build:backend
 npm run dev:backend
 ```
@@ -63,6 +64,14 @@ http://localhost:3001
 ```
 
 后端启动时会自动执行幂等建表 SQL，创建 SQLite 表结构。当前环境下 Prisma schema engine 可校验 schema，但 `prisma migrate dev/db push` 会返回空的 schema engine error，因此运行期建表作为本地开发兜底。当前默认通过 `HOST=0.0.0.0` 监听，可供局域网设备访问。
+
+如果是部署更新、恢复旧库、或需要在保留原始数据的前提下同步新增字段 / 索引，执行：
+
+```bash
+npm --workspace backend run sync-db
+```
+
+这个命令会调用后端的幂等数据库同步逻辑，对现有 SQLite 数据做兼容升级，不会直接清空原始数据。
 
 ## 管理后台
 

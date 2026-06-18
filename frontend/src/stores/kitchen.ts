@@ -39,7 +39,6 @@ const LEGACY_DISH_NAMES: Record<string, string> = {
   'seaweed-egg-soup': '紫菜蛋花汤',
   'shredded-potato': '酸辣土豆丝'
 }
-const MIN_REAL_DISH_COUNT = 50
 type DishSourceFilter = DishSourceType | 'all'
 type DishSearchRow = { dish: Dish; score: number }
 type DishSearchField = { text: string; weight: number }
@@ -424,6 +423,10 @@ function sourceLabelOf(dish: Dish) {
 
 function canUserEditDish(dish: Dish, user: UserProfile | null) {
   return sourceTypeOf(dish) === 'user_created' && Boolean(user?.id) && dish.ownerUserId === user?.id
+}
+
+function copiedDishSourceIdOf(dish: Dish) {
+  return dish.copiedFromDishId || ''
 }
 
 function normalizeCookStatus(status: unknown): CookStatus {
@@ -1065,7 +1068,6 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     async ensureRemoteDishes() {
       if (!this.token || this.loading) return
-      if (this.dishes.length >= MIN_REAL_DISH_COUNT && this.dishes.some((dish) => dish.sourceType === 'system_sync')) return
       try {
         await this.refreshDishes()
       } catch {
@@ -1112,6 +1114,20 @@ export const useKitchenStore = defineStore('kitchen', {
     },
     myCreatedDishes() {
       return this.dishes.filter((dish) => this.canEditDish(dish))
+    },
+    hasCopiedSystemDish(sourceDishId: string) {
+      return this.dishes.some((dish) =>
+        sourceTypeOf(dish) === 'user_created' &&
+        dish.ownerUserId === this.user?.id &&
+        copiedDishSourceIdOf(dish) === sourceDishId
+      )
+    },
+    copiedDishBySourceId(sourceDishId: string) {
+      return this.dishes.find((dish) =>
+        sourceTypeOf(dish) === 'user_created' &&
+        dish.ownerUserId === this.user?.id &&
+        copiedDishSourceIdOf(dish) === sourceDishId
+      )
     },
     favoriteDishEntries(): FavoriteDishEntry[] {
       return this.dishes
@@ -1441,6 +1457,11 @@ export const useKitchenStore = defineStore('kitchen', {
       const existing = this.getDish(id)
       if (!existing) throw new Error('菜品不存在')
       this.requireSession()
+      if (this.hasCopiedSystemDish(id)) {
+        const error = new ApiError(409, '该公共菜品已添加到我的菜品库', 'DISH_ALREADY_COPIED')
+        this.apiError = error.message
+        throw error
+      }
 
       if (this.token) {
         const dish = await this.runRemote(() => kitchenApi.copyDishToMine(this.token, id))
@@ -1453,6 +1474,7 @@ export const useKitchenStore = defineStore('kitchen', {
       const copied: Dish = {
         ...existing,
         id: makeId('dish'),
+        copiedFromDishId: existing.id,
         sourceType: 'user_created',
         sourceName: '复制自公共菜品',
         ownerUserId: this.user?.id,

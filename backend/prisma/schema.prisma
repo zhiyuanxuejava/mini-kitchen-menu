@@ -38,6 +38,7 @@ model Category {
 model Dish {
   id               String           @id @default(cuid())
   ownerUserId      String?          @map("userId")
+  copiedFromDishId String?
   name             String
   category         String
   coverImage       String
@@ -57,6 +58,8 @@ model Dish {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   owner            User?            @relation("DishOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  copiedFrom       Dish?            @relation("DishCopySource", fields: [copiedFromDishId], references: [id], onDelete: SetNull)
+  copiedDishes     Dish[]           @relation("DishCopySource")
   categoryRef      Category?        @relation(fields: [category], references: [code])
   ingredients      DishIngredient[]
   steps            DishStep[]
@@ -66,6 +69,7 @@ model Dish {
   favoritedBy      FavoriteDish[]
 
   @@index([ownerUserId])
+  @@index([copiedFromDishId])
   @@index([sourceType])
   @@index([category])
 }

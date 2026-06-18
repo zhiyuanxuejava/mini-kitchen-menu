@@ -75,6 +75,7 @@ export interface EditableDishInput {
 
 export interface Dish {
   id: string
+  copiedFromDishId?: string
   name: string
   emoji: string
   category: DishCategory

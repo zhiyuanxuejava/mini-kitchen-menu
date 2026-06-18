@@ -98,7 +98,6 @@
       @view="viewDish"
       @add="store.addToMenu"
       @favorite="toggleFavorite"
-      @copy="copyDishToMine"
     />
     <view v-if="store.loading" class="loading-card card">菜品同步中</view>
     <view v-if="store.apiError" class="api-error card">{{ store.apiError }}</view>
@@ -335,16 +334,6 @@ async function toggleFavorite(id: string) {
   }
 }
 
-async function copyDishToMine(id: string) {
-  const dish = store.getDish(id)
-  if (!dish) return
-  try {
-    await store.copyDishToMine(id)
-    uni.showToast({ title: '已添加到我的菜品', icon: 'success' })
-  } catch {
-    uni.showToast({ title: store.apiError || '添加失败', icon: 'none' })
-  }
-}
 </script>
 
 <style scoped lang="scss">

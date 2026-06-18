@@ -55,8 +55,14 @@
         >
           <text class="detail-secondary-label">{{ dish.isFavorite ? '♥ 已收藏' : '♡ 收藏菜品' }}</text>
         </button>
-        <button v-if="canCopyToMine" class="detail-secondary-btn" hover-class="tap" @tap="copyDishToMine">
-          <text class="detail-secondary-label">＋ 添加到我的菜品</text>
+        <button
+          v-if="canCopyToMine"
+          :class="['detail-secondary-btn', isCopiedToMine ? 'active-soft' : '']"
+          hover-class="tap"
+          :disabled="isCopiedToMine"
+          @tap="copyDishToMine"
+        >
+          <text class="detail-secondary-label">{{ isCopiedToMine ? '已添加到我的菜品' : '＋ 添加到我的菜品' }}</text>
         </button>
         <button v-if="canEdit" class="detail-secondary-btn" hover-class="tap" @tap="editDish">
           <text class="detail-secondary-label">✎ 编辑菜品</text>
@@ -156,6 +162,8 @@ const dish = computed(() => store.getDish(id.value))
 const canEdit = computed(() => (dish.value ? store.canEditDish(dish.value) : false))
 const canToggleLearned = computed(() => Boolean(dish.value?.id))
 const canCopyToMine = computed(() => dish.value?.sourceType !== 'user_created')
+const copiedDish = computed(() => (dish.value ? store.copiedDishBySourceId(dish.value.id) : undefined))
+const isCopiedToMine = computed(() => Boolean(copiedDish.value))
 const learnedTimeLabel = computed(() => formatLearnedTime(dish.value?.learnedAt))
 const displaySteps = computed(() => resolvedDishSteps(dish.value))
 const hasStructuredSteps = computed(() => hasStructuredDishSteps(dish.value))
@@ -193,7 +201,7 @@ async function toggleFavorite() {
 }
 
 async function copyDishToMine() {
-  if (!dish.value) return
+  if (!dish.value || isCopiedToMine.value) return
   try {
     const nextId = await store.copyDishToMine(dish.value.id)
     uni.showToast({ title: '已添加到我的菜品', icon: 'success' })

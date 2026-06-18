@@ -418,6 +418,10 @@ function serializeDishWithLearnedAt(dish: DishWithLearnRelation) {
   }
 }
 
+function isPrismaUniqueConstraintError(error: unknown): error is { code: string } {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2002'
+}
+
 function serializeLearnedDishEntry(entry: {
   id: string
   learnedAt: Date
@@ -914,42 +918,11 @@ app.post('/dishes/:id/copy', auth, async (req: AuthedRequest, res) => {
     return
   }
 
-  const dish = await prisma.dish.create({
-    data: {
+  const existed = await prisma.dish.findFirst({
+    where: {
       ownerUserId: req.user!.id,
-      name: sourceDish.name,
-      category: sourceDish.category,
-      coverImage: sourceDish.coverImage,
-      description: sourceDish.description,
-      remark: sourceDish.remark,
-      difficulty: sourceDish.difficulty,
-      estimatedMinutes: sourceDish.estimatedMinutes,
-      servings: sourceDish.servings,
-      tasteTags: sourceDish.tasteTags,
-      sourceType: 'user_created',
-      sourceName: '复制自公共菜品',
-      sourceUrl: sourceDish.sourceUrl,
-      sourceLicense: sourceDish.sourceLicense,
-      status: 'published',
-      ingredients: {
-        create: sourceDish.ingredients.map((item, index) => ({
-          groupType: item.groupType,
-          name: item.name,
-          amount: item.amount,
-          sortOrder: index
-        }))
-      },
-      steps: {
-        create: sourceDish.steps.map((item, index) => ({
-          title: item.title,
-          description: item.description,
-          image: item.image || sourceDish.coverImage,
-          heat: item.heat,
-          minutes: item.minutes,
-          tips: item.tips,
-          stepNo: index + 1
-        }))
-      }
+      copiedFromDishId: sourceDish.id,
+      sourceType: 'user_created'
     },
     include: {
       categoryRef: true,
@@ -959,6 +932,66 @@ app.post('/dishes/:id/copy', auth, async (req: AuthedRequest, res) => {
       favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
     }
   })
+  if (existed) {
+    res.status(409).json({ message: '该公共菜品已添加到我的菜品库', code: 'DISH_ALREADY_COPIED' })
+    return
+  }
+
+  let dish
+  try {
+    dish = await prisma.dish.create({
+      data: {
+        ownerUserId: req.user!.id,
+        copiedFromDishId: sourceDish.id,
+        name: sourceDish.name,
+        category: sourceDish.category,
+        coverImage: sourceDish.coverImage,
+        description: sourceDish.description,
+        remark: sourceDish.remark,
+        difficulty: sourceDish.difficulty,
+        estimatedMinutes: sourceDish.estimatedMinutes,
+        servings: sourceDish.servings,
+        tasteTags: sourceDish.tasteTags,
+        sourceType: 'user_created',
+        sourceName: '复制自公共菜品',
+        sourceUrl: sourceDish.sourceUrl,
+        sourceLicense: sourceDish.sourceLicense,
+        status: 'published',
+        ingredients: {
+          create: sourceDish.ingredients.map((item, index) => ({
+            groupType: item.groupType,
+            name: item.name,
+            amount: item.amount,
+            sortOrder: index
+          }))
+        },
+        steps: {
+          create: sourceDish.steps.map((item, index) => ({
+            title: item.title,
+            description: item.description,
+            image: item.image || sourceDish.coverImage,
+            heat: item.heat,
+            minutes: item.minutes,
+            tips: item.tips,
+            stepNo: index + 1
+          }))
+        }
+      },
+      include: {
+        categoryRef: true,
+        ingredients: { orderBy: { sortOrder: 'asc' } },
+        steps: { orderBy: { stepNo: 'asc' } },
+        learnedBy: { where: { userId: req.user!.id }, select: { learnedAt: true } },
+        favoritedBy: { where: { userId: req.user!.id }, select: { favoritedAt: true } }
+      }
+    })
+  } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) {
+      res.status(409).json({ message: '该公共菜品已添加到我的菜品库', code: 'DISH_ALREADY_COPIED' })
+      return
+    }
+    throw error
+  }
   res.status(201).json(serializeDishWithLearnedAt(dish))
 })
 

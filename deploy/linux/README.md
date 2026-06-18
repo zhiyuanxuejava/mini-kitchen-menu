@@ -201,6 +201,7 @@ bash ./upgrade-upload-bundle.sh /h5/mini-kitchen-menu-linux-upload-xxxxxx.tar.gz
 - 替换 `/h5/mini-kitchen-menu`
 - 恢复数据库和上传文件
 - 进入新目录执行 `bash ./deploy/linux/deploy-ip.sh`
+- 在保留原始数据的前提下自动同步数据库字段、索引和兼容性更新，再启动新服务
 
 ### 5. 更新后验证
 
@@ -253,7 +254,26 @@ BASE_DIR=/h5 APP_NAME=mini-kitchen-menu bash /h5/upgrade-upload-bundle.sh /h5/mi
 - 静态资源修改
 - 管理后台代码修改（如果你后续启用后台）
 
-如果后续涉及 Prisma 数据库结构变更，不建议直接按这个流程覆盖发布，需要额外处理数据库迁移。
+当前仓库的发布脚本已经内置“保留原始数据的幂等字段同步”：
+
+- 会先恢复旧的 `backend/prisma/dev.db`
+- 再执行后端的数据库同步脚本
+- 由 `backend/src/db-init.ts` 按需补字段、补索引、重建兼容表结构，并保留已有数据
+
+适合以下类型的更新：
+
+- 新增字段
+- 新增索引
+- 旧字段兼容补齐
+- 需要保留原始数据的表结构重建
+
+不适合的仍然是高风险数据迁移，例如：
+
+- 大规模字段语义变更
+- 复杂数据拆表/合表
+- 需要人工校验的数据清洗
+
+这类场景仍然建议单独设计迁移脚本并先备份数据库。
 
 ## 持久化目录
 

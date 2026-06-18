@@ -46,6 +46,7 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS "Dish" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT,
+    "copiedFromDishId" TEXT,
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "coverImage" TEXT NOT NULL,
@@ -65,6 +66,7 @@ const statements = [
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Dish_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Dish_copiedFromDishId_fkey" FOREIGN KEY ("copiedFromDishId") REFERENCES "Dish" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Dish_category_fkey" FOREIGN KEY ("category") REFERENCES "Category" ("code") ON DELETE RESTRICT ON UPDATE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS "DishIngredient" (
@@ -204,7 +206,7 @@ function selectColumn(columns: ColumnInfo[], name: string, fallback: string) {
 async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
   const columns = await tableInfo(prisma, 'Dish')
   const userId = columns.find((column) => column.name === 'userId')
-  const requiredColumns = ['sourceType', 'sourceName', 'sourceUrl', 'sourceLicense', 'syncKey', 'status', 'remark']
+  const requiredColumns = ['sourceType', 'sourceName', 'sourceUrl', 'sourceLicense', 'syncKey', 'status', 'remark', 'copiedFromDishId']
   const needsRebuild = Boolean(userId?.notnull) || requiredColumns.some((name) => !hasColumn(columns, name))
 
   if (!needsRebuild) return
@@ -217,6 +219,7 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
     await prisma.$executeRawUnsafe(`CREATE TABLE "Dish_next" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "userId" TEXT,
+      "copiedFromDishId" TEXT,
       "name" TEXT NOT NULL,
       "category" TEXT NOT NULL,
       "coverImage" TEXT NOT NULL,
@@ -236,16 +239,18 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "Dish_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "Dish_copiedFromDishId_fkey" FOREIGN KEY ("copiedFromDishId") REFERENCES "Dish" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
       CONSTRAINT "Dish_category_fkey" FOREIGN KEY ("category") REFERENCES "Category" ("code") ON DELETE RESTRICT ON UPDATE CASCADE
     )`)
     await prisma.$executeRawUnsafe(`INSERT INTO "Dish_next" (
-      "id", "userId", "name", "category", "coverImage", "description", "remark", "difficulty",
+      "id", "userId", "copiedFromDishId", "name", "category", "coverImage", "description", "remark", "difficulty",
       "estimatedMinutes", "servings", "tasteTags", "isFavorite", "sourceType", "sourceName",
       "sourceUrl", "sourceLicense", "syncKey", "status", "createdAt", "updatedAt"
     )
     SELECT
       ${selectColumn(columns, 'id', `lower(hex(randomblob(12)))`)},
       ${selectColumn(columns, 'userId', 'NULL')},
+      ${selectColumn(columns, 'copiedFromDishId', 'NULL')},
       ${selectColumn(columns, 'name', `'未命名菜品'`)},
       CASE WHEN ${selectColumn(columns, 'category', `'other'`)} IN (SELECT "code" FROM "Category") THEN ${selectColumn(columns, 'category', `'other'`)} ELSE 'other' END,
       ${selectColumn(columns, 'coverImage', `'/static/assets/placeholders/png/dish_cover_placeholder.png.png'`)},
@@ -275,14 +280,63 @@ async function rebuildDishTableIfNeeded(prisma: PrismaClient) {
 async function ensureIndexes(prisma: PrismaClient) {
   const indexStatements = [
     `CREATE INDEX IF NOT EXISTS "Dish_userId_idx" ON "Dish"("userId")`,
+    `CREATE INDEX IF NOT EXISTS "Dish_copiedFromDishId_idx" ON "Dish"("copiedFromDishId")`,
     `CREATE INDEX IF NOT EXISTS "Dish_sourceType_idx" ON "Dish"("sourceType")`,
     `CREATE INDEX IF NOT EXISTS "Dish_category_idx" ON "Dish"("category")`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS "Dish_syncKey_key" ON "Dish"("syncKey") WHERE "syncKey" IS NOT NULL`
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Dish_syncKey_key" ON "Dish"("syncKey") WHERE "syncKey" IS NOT NULL`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Dish_userId_copiedFromDishId_unique" ON "Dish"("userId", "copiedFromDishId") WHERE "userId" IS NOT NULL AND "copiedFromDishId" IS NOT NULL`
   ]
 
   for (const statement of indexStatements) {
     await prisma.$executeRawUnsafe(statement)
   }
+}
+
+async function backfillCopiedFromDishId(prisma: PrismaClient) {
+  await prisma.$executeRawUnsafe(`
+    UPDATE "Dish" AS target
+    SET "copiedFromDishId" = (
+      SELECT source."id"
+      FROM "Dish" AS source
+      WHERE source."sourceType" = 'system_sync'
+        AND source."sourceUrl" IS NOT NULL
+        AND source."sourceUrl" = target."sourceUrl"
+      LIMIT 1
+    )
+    WHERE target."sourceType" = 'user_created'
+      AND target."sourceName" = '复制自公共菜品'
+      AND target."copiedFromDishId" IS NULL
+      AND target."sourceUrl" IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+        FROM "Dish" AS source
+        WHERE source."sourceType" = 'system_sync'
+          AND source."sourceUrl" IS NOT NULL
+          AND source."sourceUrl" = target."sourceUrl"
+      )
+  `)
+
+  await prisma.$executeRawUnsafe(`
+    UPDATE "Dish" AS target
+    SET "copiedFromDishId" = (
+      SELECT source."id"
+      FROM "Dish" AS source
+      WHERE source."sourceType" = 'system_sync'
+        AND source."name" = target."name"
+        AND source."category" = target."category"
+      LIMIT 1
+    )
+    WHERE target."sourceType" = 'user_created'
+      AND target."sourceName" = '复制自公共菜品'
+      AND target."copiedFromDishId" IS NULL
+      AND (
+        SELECT COUNT(1)
+        FROM "Dish" AS source
+        WHERE source."sourceType" = 'system_sync'
+          AND source."name" = target."name"
+          AND source."category" = target."category"
+      ) = 1
+  `)
 }
 
 export async function ensureDatabase(prisma: PrismaClient) {
@@ -293,5 +347,6 @@ export async function ensureDatabase(prisma: PrismaClient) {
   await ensureUserColumns(prisma)
   await seedCategories(prisma)
   await rebuildDishTableIfNeeded(prisma)
+  await backfillCopiedFromDishId(prisma)
   await ensureIndexes(prisma)
 }
