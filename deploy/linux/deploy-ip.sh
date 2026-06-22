@@ -191,6 +191,14 @@ sync_database_schema() {
   )
 }
 
+sync_system_dishes() {
+  echo "Synchronizing public dish library with duplicate cleanup..."
+  (
+    cd "$APP_DIR"
+    npm --workspace backend run sync-system-dishes
+  )
+}
+
 prepare_frontend_config() {
   echo "Preparing frontend manifest files..."
   (
@@ -524,6 +532,7 @@ prepare_frontend_config
 build_project
 ensure_writable_dirs
 sync_database_schema
+sync_system_dishes
 install_systemd_service
 install_nginx_config
 verify_services

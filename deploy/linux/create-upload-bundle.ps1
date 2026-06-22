@@ -43,6 +43,16 @@ if (!(Test-Path $outputDir)) {
   New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 
+Push-Location $repoRoot
+try {
+  npm --workspace backend run export-system-dishes | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    throw "export-system-dishes failed with exit code $LASTEXITCODE"
+  }
+} finally {
+  Pop-Location
+}
+
 if (Test-Path $stageDir) {
   Remove-Item -LiteralPath $stageDir -Recurse -Force
 }
@@ -76,6 +86,9 @@ Invoke-Robocopy -Source (Join-Path $repoRoot 'scripts') -Destination (Join-Path 
 
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'output') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'output\recipe-import-sources.json') -Destination (Join-Path $stageDir 'output\recipe-import-sources.json')
+if (Test-Path (Join-Path $repoRoot 'output\system-dishes.full.json')) {
+  Copy-Item -LiteralPath (Join-Path $repoRoot 'output\system-dishes.full.json') -Destination (Join-Path $stageDir 'output\system-dishes.full.json')
+}
 
 New-Item -ItemType Directory -Path (Join-Path $stageDir 'backend\uploads') -Force | Out-Null
 

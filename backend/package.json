@@ -6,6 +6,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "sync-db": "tsx src/sync-db.ts",
+    "sync-system-dishes": "tsx src/sync-system-dishes.ts",
+    "export-system-dishes": "tsx src/export-system-dishes.ts",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",

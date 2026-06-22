@@ -9,7 +9,7 @@ import multer from 'multer'
 import { PrismaClient, type Dish, type Prisma, type User } from '@prisma/client'
 import { z } from 'zod'
 import { ensureDatabase } from './db-init.js'
-import { sampleDishes } from './sample-data.js'
+import { syncSystemDishesFromSample } from './system-dishes.js'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(dirname, '..', '..')
@@ -48,7 +48,6 @@ const app = express()
 const uploadDir = path.resolve(dirname, '..', 'uploads')
 const staticDir = path.join(rootDir, 'frontend', 'src', 'static')
 const backendStaticDir = path.join(rootDir, 'backend', 'static')
-const recipeSourcesFile = path.join(rootDir, 'output', 'recipe-import-sources.json')
 const port = Number(process.env.PORT || 3001)
 const host = process.env.HOST || '0.0.0.0'
 const jwtSecret = process.env.JWT_SECRET || 'dev-zhangshao-menu-secret'
@@ -212,13 +211,6 @@ type WechatCode2SessionResponse = {
   errmsg?: string
 }
 
-type RecipeImportSource = {
-  name: string
-  recipeSource?: string
-  recipeLicense?: string
-  localImage?: string
-}
-
 type DishWithLearnRelation = Prisma.DishGetPayload<{
   include: {
     categoryRef: true
@@ -286,107 +278,6 @@ function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction) {
     return
   }
   next()
-}
-
-function readRecipeSources() {
-  try {
-    return JSON.parse(fs.readFileSync(recipeSourcesFile, 'utf8')) as RecipeImportSource[]
-  } catch {
-    return []
-  }
-}
-
-function syncKeyFromRecipeSource(source: RecipeImportSource | undefined, name: string) {
-  const marker = '/blob/master/'
-  const recipeSource = source?.recipeSource || ''
-  const index = recipeSource.indexOf(marker)
-  if (index >= 0) return `howtocook:${decodeURIComponent(recipeSource.slice(index + marker.length))}`
-  return `legacy-howtocook:${name}`
-}
-
-async function seedSystemDishesFromSample() {
-  const sourceByName = new Map(readRecipeSources().map((source) => [source.name, source]))
-
-  for (const dish of sampleDishes) {
-    const source = sourceByName.get(dish.name)
-    const syncKey = syncKeyFromRecipeSource(source, dish.name)
-    const data = {
-      ownerUserId: null,
-      copiedFromDishId: null,
-      name: dish.name,
-      category: dish.category,
-      coverImage: dish.coverImage,
-      description: dish.description,
-      remark: '',
-      difficulty: dish.difficulty,
-      estimatedMinutes: dish.estimatedMinutes,
-      servings: dish.servings,
-      tasteTags: JSON.stringify(dish.tasteTags),
-      sourceType: 'system_sync' as const,
-      sourceName: 'HowToCook',
-      sourceUrl: source?.recipeSource,
-      sourceLicense: source?.recipeLicense || 'HowToCook / Unlicense public domain dedication',
-      syncKey,
-      status: 'published'
-    }
-    const ingredients = dish.ingredients.map(([groupType, name, amount], index) => ({
-      groupType,
-      name,
-      amount,
-      sortOrder: index
-    }))
-    const steps = dish.steps.map((step, index) => ({
-      stepNo: index + 1,
-      title: step.title,
-      description: step.description,
-      image: step.image || dish.coverImage,
-      heat: step.heat,
-      minutes: step.minutes,
-      tips: step.tips
-    }))
-
-    const existing = await prisma.dish.findFirst({
-      where: {
-        sourceType: 'system_sync',
-        OR: [
-          { syncKey },
-          { syncKey: null, name: dish.name, category: dish.category }
-        ]
-      },
-      select: { id: true }
-    })
-
-    if (!existing) {
-      await prisma.dish.create({
-        data: {
-          ...data,
-          ingredients: { create: ingredients },
-          steps: { create: steps }
-        }
-      })
-      continue
-    }
-
-    await prisma.$transaction([
-      prisma.dish.update({
-        where: { id: existing.id },
-        data
-      }),
-      prisma.dishIngredient.deleteMany({ where: { dishId: existing.id } }),
-      prisma.dishStep.deleteMany({ where: { dishId: existing.id } }),
-      prisma.dishIngredient.createMany({
-        data: ingredients.map((item) => ({ dishId: existing.id, ...item }))
-      }),
-      prisma.dishStep.createMany({
-        data: steps.map((item) => ({ dishId: existing.id, ...item }))
-      })
-    ])
-  }
-}
-
-async function syncSystemDishesFromSample() {
-  await seedSystemDishesFromSample()
-  return prisma.dish.count({ where: { sourceType: 'system_sync', status: 'published' } })
 }
 
 function visibleDishWhere(userId: string) {
@@ -791,8 +682,8 @@ app.get('/dishes', auth, async (req: AuthedRequest, res) => {
 })
 
 app.post('/dishes/sync-system', auth, async (_req: AuthedRequest, res) => {
-  const syncedDishCount = await syncSystemDishesFromSample()
-  res.json({ ok: true, syncedDishCount })
+  const result = await syncSystemDishesFromSample(prisma)
+  res.json({ ok: true, syncedDishCount: result.publishedDishCount })
 })
 
 app.post('/dishes', auth, async (req: AuthedRequest, res) => {
@@ -1468,15 +1359,15 @@ app.get('/me/stats', auth, async (req: AuthedRequest, res) => {
 })
 
 app.get('/admin/overview', auth, requireAdmin, async (_req, res) => {
-  const [userCount, dishCount, systemDishCount, userDishCount, categoryCount, recordCount] = await Promise.all([
+  const [userCount, systemDishCount, userDishCount, categoryCount, recordCount] = await Promise.all([
     prisma.user.count(),
-    prisma.dish.count(),
-    prisma.dish.count({ where: { sourceType: 'system_sync' } }),
+    prisma.dish.count({ where: { sourceType: 'system_sync', status: 'published' } }),
     prisma.dish.count({ where: { sourceType: 'user_created' } }),
     prisma.category.count(),
     prisma.cookRecord.count()
   ])
 
+  const dishCount = systemDishCount + userDishCount
   res.json({ userCount, dishCount, systemDishCount, userDishCount, categoryCount, recordCount })
 })
 
@@ -1567,7 +1458,7 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 await ensureDatabase(prisma)
-await syncSystemDishesFromSample()
+await syncSystemDishesFromSample(prisma)
 
 app.listen(port, host, () => {
   console.log(`Zhangshao menu API listening on http://${host}:${port}`)
